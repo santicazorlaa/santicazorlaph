@@ -7,8 +7,14 @@
  * cambios sólo se aplican solos a las fotos que se suben después. Las que ya
  * estaban se quedan como estaban hasta que se corre esto.
  *
- * No toca el original ni la base: reescribe los dos archivos públicos sobre la
- * misma clave, así los links que ya circulan siguen andando.
+ * No toca el original. Sí escribe los dos archivos públicos en una dirección
+ * nueva y actualiza la base para que apunte ahí, borrando después los viejos.
+ *
+ * Eso no es un capricho: las fotos se publican con `Cache-Control` de un año y
+ * marcadas `immutable`, que es lo correcto para algo que nunca cambia. Pisar el
+ * mismo archivo deja al CDN de Cloudflare —y a cualquier navegador que ya la
+ * haya visto— sirviendo la versión vieja durante meses. Con una dirección nueva
+ * el cambio se ve al instante y sin purgar ningún caché.
  *
  *   # ver qué haría, sin escribir nada
  *   npx tsx --conditions=react-server --env-file=.env scripts/rehacer-previsualizaciones.ts
@@ -20,8 +26,18 @@
  *   npx tsx --conditions=react-server --env-file=.env scripts/rehacer-previsualizaciones.ts --aplicar --partido=bayern-vs-drink-7
  */
 import { db } from "../src/lib/db";
-import { getObject, putObject } from "../src/lib/storage";
+import { deleteObject, getObject, putObject } from "../src/lib/storage";
 import { formatBytes, processPhoto } from "../src/lib/watermark";
+
+/// Del original `originales/<evento>/<objeto>.jpg` saca las dos partes que
+/// hacen falta para armar las direcciones nuevas.
+function partes(originalKey: string) {
+  const m = /^originales\/([^/]+)\/([^/]+)\.jpg$/.exec(originalKey);
+  return m ? { evento: m[1], objeto: m[2] } : null;
+}
+
+/// Un sello corto para que la dirección nueva no choque con la vieja.
+const SELLO = Date.now().toString(36);
 
 const args = process.argv.slice(2);
 const aplicar = args.includes("--aplicar");
@@ -79,11 +95,30 @@ async function main() {
       const nueva = await processPhoto(original);
       despues += nueva.preview.byteLength + nueva.thumb.byteLength;
 
+      const p = partes(foto.originalKey);
+      if (!p) throw new Error(`No entiendo la dirección del original: ${foto.originalKey}`);
+      const previewKey = `preview/${p.evento}/${p.objeto}.${SELLO}.jpg`;
+      const thumbKey = `thumb/${p.evento}/${p.objeto}.${SELLO}.jpg`;
+
       if (aplicar) {
         await Promise.all([
-          putObject("public", foto.previewKey, nueva.preview, "image/jpeg"),
-          putObject("public", foto.thumbKey, nueva.thumb, "image/jpeg"),
+          putObject("public", previewKey, nueva.preview, "image/jpeg"),
+          putObject("public", thumbKey, nueva.thumb, "image/jpeg"),
         ]);
+
+        // Recién con los archivos nuevos arriba se mueve la base. Si algo falla
+        // antes de esto, la foto sigue mostrando la versión vieja y no se rompe.
+        await db.photo.update({
+          where: { id: foto.id },
+          data: { previewKey, thumbKey },
+        });
+
+        // Y recién con la base apuntando al archivo nuevo se borra el viejo.
+        for (const vieja of [foto.previewKey, foto.thumbKey]) {
+          if (vieja !== previewKey && vieja !== thumbKey) {
+            await deleteObject("public", vieja).catch(() => {});
+          }
+        }
       }
 
       hechas++;

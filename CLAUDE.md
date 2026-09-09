@@ -102,6 +102,13 @@ cuando el comprador lo está mirando.
   ejecución.
 - La dirección de aviso a MercadoPago **no puede redirigir**: no siguen
   redirecciones y el aviso se pierde en silencio.
+- **Las fotos públicas se suben con caché de un año y marcadas `immutable`.** Es
+  lo correcto para algo que no cambia nunca, pero significa que pisar el mismo
+  archivo no sirve de nada: Cloudflare y los navegadores siguen mostrando la
+  versión vieja durante meses. Ya pasó al bajar la calidad de las
+  previsualizaciones. Por eso el reprocesado escribe en una dirección nueva,
+  mueve la base y recién ahí borra la vieja. No hay token de Cloudflare en el
+  proyecto, así que purgar el caché no es una opción.
 
 ## Comandos
 
@@ -150,18 +157,17 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 ## Qué falta
 
-Primero, para cerrar lo de la rama `mejoras-estetica-y-marca`:
+Para cerrar lo de la rama `mejoras-estetica-y-marca`:
 
-1. **Correr `npx prisma migrate deploy`.** Crea la tabla `Ajuste`, donde se
-   guarda la intensidad de la marca de agua. Es aditiva: no toca nada de lo que
-   ya está. Hasta que no se corra, los controles del panel se ven pero al
-   guardar fallan (leer sí funciona: usa los valores por defecto).
-2. **Mirar los controles de intensidad en el panel**, que quedaron sin revisar a
-   ojo.
-3. **Decidir si rehacer las previsualizaciones ya subidas.** Las 60 fotos del
-   Bayern vs Drink siguen online con la calidad vieja (1100 px, calidad 82); las
-   nuevas salen a 820 px y calidad 62. El script de arriba las rehace.
-4. **Publicar la rama.**
+1. **Mirar los controles de intensidad en el panel**, que quedaron sin revisar a
+   ojo (hay que entrar con contraseña). Guardar y leer ya se verificó por
+   separado y funciona, incluido el acotado de valores fuera de rango.
+2. **Publicar la rama.**
+
+Ya hecho de esa tanda: la migración de `Ajuste` está aplicada, y las 74 fotos
+que estaban online se rehicieron a 820 px y calidad 62 (14 MB → 6 MB de peso
+publicado). El sitio en producción sigue andando con las fotos nuevas aunque
+todavía muestre el diseño viejo.
 
 Después, lo que ya venía de antes:
 
