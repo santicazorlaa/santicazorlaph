@@ -194,9 +194,13 @@ export function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`Foto ${photo.code}`}
-      // Alto dinámico y no `inset-0`: en un celular la barra del navegador
-      // aparece y desaparece, y con el alto fijo el pie del visor queda tapado.
-      className="fixed left-0 top-0 w-full h-dvh z-50 bg-ground/95 backdrop-blur-sm flex flex-col"
+      // Las dos formas de dar el alto, y en este orden. `inset-0` funciona en
+      // cualquier navegador y es el piso. `h-dvh` lo mejora donde se entienda:
+      // sigue a la barra del navegador cuando aparece y desaparece, que si no
+      // tapa el pie del visor. Si un navegador no conoce esa unidad descarta
+      // la regla y queda el piso; poner sólo `h-dvh` dejaba el visor sin alto
+      // y la foto desaparecía.
+      className="fixed inset-0 h-dvh z-50 bg-ground/95 backdrop-blur-sm flex flex-col"
     >
       <div className="flex items-center justify-between gap-4 px-5 h-14 border-b border-line shrink-0">
         <span className="etiqueta text-muted tabular-nums">
