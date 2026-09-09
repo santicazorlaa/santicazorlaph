@@ -3,6 +3,7 @@ import "server-only";
 import { customAlphabet } from "nanoid";
 
 import { db } from "./db";
+import { mercadopago as mpEnv } from "./env";
 import { createPreference, getPayment } from "./mercadopago";
 
 export const OrderStatus = {
@@ -92,6 +93,29 @@ export async function createOrder(photoIds: string[], email: string) {
   });
 
   return { token: order.token, checkoutUrl };
+}
+
+/**
+ * Red de seguridad para cuando el aviso de MercadoPago no llega: una caída, un
+ * despliegue a mitad de camino, una redirección. Le pregunta a MercadoPago si
+ * esta orden tiene un pago aprobado y, si lo hay, la acredita.
+ *
+ * Se llama cuando el comprador mira su compra y todavía figura pendiente, que
+ * es justo el momento en que le importa.
+ */
+export async function reconcilePendingOrder(orderId: string) {
+  const res = await fetch(
+    `https://api.mercadopago.com/v1/payments/search?external_reference=${encodeURIComponent(orderId)}`,
+    { headers: { Authorization: `Bearer ${mpEnv().accessToken}` }, cache: "no-store" },
+  );
+  if (!res.ok) return { ok: false, reason: `busqueda fallo (${res.status})` };
+
+  const pagos = ((await res.json()).results ?? []) as { id: number; status: string }[];
+  const aprobado = pagos.find((p) => p.status === "approved");
+  if (!aprobado) return { ok: false, reason: "sin pago aprobado" };
+
+  // Pasa por la misma verificación que el webhook: monto, estado y orden.
+  return confirmPayment(String(aprobado.id));
 }
 
 /**

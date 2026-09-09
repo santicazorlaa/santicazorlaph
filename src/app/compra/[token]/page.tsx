@@ -6,7 +6,7 @@ import { ClearCartOnPaid } from "@/components/clear-cart";
 import { DownloadButton } from "@/components/download-button";
 import { db } from "@/lib/db";
 import { precio } from "@/lib/format";
-import { OrderStatus } from "@/lib/orders";
+import { OrderStatus, reconcilePendingOrder } from "@/lib/orders";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,17 @@ type Props = { params: Promise<{ token: string }> };
 
 export default async function CompraPage({ params }: Props) {
   const { token } = await params;
+
+  const pendiente = await db.order.findUnique({
+    where: { token },
+    select: { id: true, status: true },
+  });
+
+  // Si el aviso de MercadoPago se perdió, le preguntamos nosotros antes de
+  // mostrarle al comprador que su pago sigue pendiente.
+  if (pendiente && pendiente.status === OrderStatus.PENDING) {
+    await reconcilePendingOrder(pendiente.id).catch(() => null);
+  }
 
   const order = await db.order.findUnique({
     where: { token },
