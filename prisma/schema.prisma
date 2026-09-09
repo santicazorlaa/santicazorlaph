@@ -1,0 +1,98 @@
+// Durante el desarrollo local usamos SQLite y `prisma db push` (sin archivos de
+// migración). Al desplegar se cambia el provider a "postgresql" y recién ahí se
+// genera la primera migración real.
+
+// Sin `output` propio a propósito: si el cliente generado cae dentro de src/,
+// Turbopack termina trazando todo el proyecto y lo mete en el bundle del server.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  date      DateTime
+  location  String?
+  /// Precio por foto en pesos enteros. Cada evento puede tener el suyo.
+  priceArs  Int      @default(2500)
+  published Boolean  @default(false)
+  coverKey  String?
+  createdAt DateTime @default(now())
+
+  photos Photo[]
+
+  @@index([published, date])
+}
+
+model Photo {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  /// Código corto que el fotógrafo le pasa al jugador para que encuentre la foto.
+  code String @unique
+
+  /// Claves en el bucket. El original vive en el prefijo privado y nunca se sirve.
+  originalKey String
+  previewKey  String
+  thumbKey    String
+
+  width      Int
+  height     Int
+  sizeBytes  Int
+  originalName String
+
+  camera  String?
+  lens    String?
+  takenAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  orderItems OrderItem[]
+
+  @@index([eventId, takenAt])
+}
+
+model Order {
+  id String @id @default(cuid())
+
+  /// Secreto que va en la URL de descarga y en el mail. Es la llave del comprador.
+  token String @unique
+
+  email     String
+  buyerName String?
+
+  /// "PENDING" | "PAID" | "FAILED" — ver OrderStatus en src/lib/orders.ts
+  status   String @default("PENDING")
+  totalArs Int
+
+  mpPreferenceId String?
+  mpPaymentId    String?
+
+  createdAt DateTime  @default(now())
+  paidAt    DateTime?
+
+  items OrderItem[]
+
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  photoId String
+  photo   Photo  @relation(fields: [photoId], references: [id], onDelete: Restrict)
+
+  /// Precio congelado al momento de la compra: si después subís el precio del
+  /// evento, la orden vieja no cambia.
+  priceArs Int
+
+  @@unique([orderId, photoId])
+}

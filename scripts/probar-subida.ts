@@ -1,0 +1,140 @@
+/**
+ * Sube una foto por el endpoint real del panel y verifica todo el recorrido:
+ * autenticación, marca de agua, lectura de EXIF, y que el original quede en el
+ * bucket privado mientras los previews van al público.
+ *
+ *   npx tsx --conditions=react-server scripts/probar-subida.ts
+ */
+import { stat } from "node:fs/promises";
+import path from "node:path";
+
+import exifr from "exifr";
+import sharp from "sharp";
+
+import { db } from "../src/lib/db";
+
+const BASE = "http://localhost:3000";
+const PASSWORD = process.env.ADMIN_PASSWORD ?? "";
+
+async function login() {
+  const form = new URLSearchParams({ password: PASSWORD });
+  const res = await fetch(`${BASE}/api/admin/login`, {
+    method: "POST",
+    body: form,
+    redirect: "manual",
+  });
+  const cookie = res.headers.get("set-cookie");
+  if (!cookie) throw new Error("No entró al panel: revisá ADMIN_PASSWORD");
+  return cookie.split(";")[0];
+}
+
+async function fotoConExif() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1600">
+    <rect width="2400" height="700" fill="#c3d8ea"/>
+    <rect y="700" width="2400" height="900" fill="#3d6b34"/>
+    <circle cx="1200" cy="1100" r="120" fill="#f0f0f0"/>
+  </svg>`;
+  return sharp(Buffer.from(svg))
+    .withExif({ IFD0: { Make: "Canon", Model: "Canon EOS R6 Mark II" } })
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+async function main() {
+  const cookie = await login();
+  console.log("OK    entró al panel");
+
+  const evento = await db.event.findFirst({ select: { id: true, title: true } });
+  if (!evento) throw new Error("No hay ningún partido cargado");
+
+  const antes = await db.photo.count({ where: { eventId: evento.id } });
+
+  const jpeg = await fotoConExif();
+  const form = new FormData();
+  form.append("eventId", evento.id);
+  form.append("file", new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }), "_SC9001.jpg");
+
+  const res = await fetch(`${BASE}/api/admin/subir`, {
+    method: "POST",
+    headers: { cookie },
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`La subida falló: ${JSON.stringify(data)}`);
+
+  console.log(`OK    subió y procesó la foto #${data.photo.code}`);
+
+  const photo = await db.photo.findUnique({ where: { id: data.photo.id } });
+  if (!photo) throw new Error("No quedó guardada en la base");
+
+  const checks: [string, boolean, string][] = [
+    ["se agregó a la base", (await db.photo.count({ where: { eventId: evento.id } })) === antes + 1, ""],
+    ["leyó la cámara del EXIF", photo.camera === "Canon EOS R6 Mark II", photo.camera ?? "null"],
+    ["guardó las medidas", photo.width === 2400 && photo.height === 1600, `${photo.width}x${photo.height}`],
+    ["el original va al bucket privado", photo.originalKey.startsWith("originales/"), photo.originalKey],
+    ["el preview va al público", photo.previewKey.startsWith("preview/"), photo.previewKey],
+  ];
+
+  const raiz = path.join(process.cwd(), ".data", "storage");
+  const existe = async (p: string) => stat(p).then(() => true).catch(() => false);
+
+  checks.push([
+    "el original está en private/",
+    await existe(path.join(raiz, "private", photo.originalKey)),
+    "",
+  ]);
+  checks.push([
+    "el original NO está en public/",
+    !(await existe(path.join(raiz, "public", photo.originalKey))),
+    "",
+  ]);
+
+  // El preview tiene que pesar bastante menos que el original.
+  const original = await stat(path.join(raiz, "private", photo.originalKey));
+  const preview = await stat(path.join(raiz, "public", photo.previewKey));
+  checks.push([
+    "el preview pesa menos que el original",
+    preview.size < original.size,
+    `${Math.round(preview.size / 1024)}KB vs ${Math.round(original.size / 1024)}KB`,
+  ]);
+
+  // Y tiene que estar reducido de tamaño.
+  const dimPreview = await sharp(path.join(raiz, "public", photo.previewKey)).metadata();
+  checks.push([
+    "el preview está reducido",
+    (dimPreview.width ?? 0) <= 1100 && (dimPreview.width ?? 0) < photo.width,
+    `${dimPreview.width}px`,
+  ]);
+
+  // El lente y la fecha de captura viven en el bloque ExifIFD. sharp no puede
+  // escribir esos dos tags, así que con una foto sintética no se pueden probar
+  // de punta a punta; lo que sí verificamos es que sepamos leer ese bloque.
+  const exifIFD = await exifr.parse(jpeg, [
+    "ExifImageWidth",
+    "LensModel",
+    "DateTimeOriginal",
+  ]);
+  checks.push([
+    "sabe leer el bloque ExifIFD (lente y fecha salen de ahí)",
+    exifIFD?.ExifImageWidth === 2400,
+    `ExifImageWidth=${exifIFD?.ExifImageWidth}`,
+  ]);
+
+  let fallos = 0;
+  for (const [nombre, ok, detalle] of checks) {
+    if (!ok) fallos++;
+    console.log(`${ok ? "OK  " : "FALLA"}  ${nombre}${detalle ? `  (${detalle})` : ""}`);
+  }
+
+  // Dejamos la base como estaba.
+  await db.photo.delete({ where: { id: photo.id } });
+
+  if (fallos > 0) process.exit(1);
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => db.$disconnect());
