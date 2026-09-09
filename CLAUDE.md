@@ -186,10 +186,14 @@ prueba "CAT vs Lastenia", con fotos sintéticas, quedó despublicado — no se p
 borrar porque tiene fotos vendidas en órdenes de prueba, y el esquema protege eso
 a propósito.
 
-En septiembre de 2026 se rediseñó: fondo oscuro con azul, tipografías Inter
-Tight e Inter, grilla sin recortes (cada foto conserva su proporción) y marca de
-agua con intensidad regulable desde el panel. Ese trabajo está **en la rama
-`mejoras-estetica-y-marca`, sin publicar**.
+En septiembre de 2026 se rediseñó y se publicó: fondo oscuro con azul,
+tipografías Inter Tight e Inter, grilla sin recortes, visor con deslizamiento,
+marca de agua e intensidad regulables, portada elegible, precio editable,
+descuento por cantidad configurable y borrado de partidos.
+
+Las ventas de prueba se borraron y el partido de prueba también, así que la base
+quedó con un solo partido —el real— y el contador en cero. **Lo que entre desde
+ahora es plata de verdad.**
 
 Una orden pendiente **no es una alarma**: casi siempre es un checkout abandonado.
 Lo grave es la que esconde un pago aprobado. Para distinguirlas:
@@ -200,42 +204,28 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 ## Qué falta
 
-Para cerrar lo de la rama `mejoras-estetica-y-marca` queda **publicarla**. Todo
-lo demás de esa tanda está hecho y verificado:
+Ya está todo publicado. Lo que queda:
 
-- La migración de `Ajuste` está aplicada.
-- Santi eligió mosaico 50, marca del centro 50 y calidad 40, y los guardó desde
-  el panel (o sea que los controles funcionan de punta a punta).
-- Las 74 fotos que estaban online se rehicieron con esos valores. El peso
-  publicado quedó en 5 MB contra los 14 MB originales.
-
-El sitio en producción ya sirve esas fotos, aunque todavía muestre el diseño
-viejo: lo único que cambia al publicar es el diseño y el panel.
-
-En esa misma rama se sumaron después: elegir la portada del partido, editar el
-precio por foto de un partido ya creado, y descuento por cantidad, configurable
-desde el panel. Los valores por defecto son los que eligió Santi: 3 o más 14%,
-5 o más 20%, 10 o más 31%, 15 o más 37%.
-
-Esos porcentajes salen de pensar en **precios redondos por pack**, no en
-porcentajes. Con la foto a $3.500 dan packs de $9.030, $14.000, $24.150 y
-$33.075. Por eso el control del panel muestra, al lado de cada escalón, cuánto
-sale el pack: es la cifra en la que se piensa. Ojo con esto al cambiar el precio
-por foto —los packs se mueven— y por eso conviene mirar el panel después.
-
-Después, lo que ya venía de antes:
-
-5. **Seis partidos "Bayern vs Drink" duplicados y vacíos** (0 fotos), de haber
-   reintentado la creación. Ya se pueden borrar desde el panel; falta hacerlo y
-   ver por qué se crearon repetidos: puede ser que el formulario no dé señal de
-   que ya se envió. Le dejaron al partido real una dirección fea,
-   `/e/bayern-vs-drink-7`, y borrarlos no la arregla: el slug ya está tomado por
-   la fila vieja hasta que se borre.
-6. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
+1. **La portada del partido quedó sin elegir.** La función está y anda; nadie la
+   usó todavía, así que en la principal se sigue viendo la primera foto con
+   marca de agua.
+2. **Por qué se crearon seis partidos duplicados.** Ya se borraron, pero la
+   causa sigue ahí: lo más probable es que el formulario de "Nuevo partido" no
+   dé señal de que ya se envió y se pueda apretar dos veces.
+3. **La dirección del partido real quedó fea**, `/e/bayern-vs-drink-7`, herencia
+   de esos duplicados. Cambiarla rompería los links ya compartidos por WhatsApp.
+4. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
    render (`filtrando` en `src/components/gallery.tsx`). Es viejo, no rompe
    nada, pero conviene limpiarlo.
-7. **Las direcciones de los partidos no se pueden editar.** El partido real
-   quedó en `/e/bayern-vs-drink-7` por los duplicados, y borrarlos no lo
-   arregla. Cambiarlo rompería los links ya compartidos por WhatsApp.
-8. Ideas para más adelante: búsqueda por selfie, "mis compras" con cuenta,
-   descuento por cantidad, aviso al jugador cuando se suben sus fotos.
+
+Sobre los descuentos, para tener presente: los porcentajes que eligió Santi
+(14 / 20 / 31 / 37) salen de pensar en **precios redondos por pack**, no en
+porcentajes. Con la foto a $3.500 dan packs de $9.030, $14.000, $24.150 y
+$33.075. Por eso el panel muestra, al lado de cada escalón, cuánto sale el pack:
+es la cifra en la que se piensa. Al cambiar el precio por foto los packs se
+mueven, así que conviene pasar por el panel después.
+
+5. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
+   cuenta, aviso al jugador cuando se suben sus fotos, y la tarjeta de "pack
+   completo" que quedó afuera del documento de ofertas porque depende de esos
+   filtros.
