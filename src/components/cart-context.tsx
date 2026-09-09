@@ -9,6 +9,8 @@ import {
   useState,
 } from "react";
 
+import { calcular, type Cuenta } from "@/lib/descuentos";
+
 const STORAGE_KEY = "sc_carrito";
 
 export type CartItem = {
@@ -23,7 +25,13 @@ export type CartItem = {
 type CartValue = {
   items: CartItem[];
   count: number;
+  /// Lo que suman las fotos sin descuento.
+  subtotal: number;
+  /// Lo que se paga, ya con el descuento por cantidad aplicado. Es el número
+  /// que tiene que ver el comprador en cualquier pantalla.
   total: number;
+  /// El detalle de esa cuenta, para poder mostrar cuánto se ahorró.
+  cuenta: Cuenta;
   has: (photoId: string) => boolean;
   add: (item: CartItem) => void;
   remove: (photoId: string) => void;
@@ -79,20 +87,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clear = useCallback(() => setItems([]), []);
 
-  const value = useMemo<CartValue>(
-    () => ({
+  const value = useMemo<CartValue>(() => {
+    const cuenta = calcular(
+      items.reduce((s, i) => s + i.priceArs, 0),
+      items.length,
+    );
+    return {
       items,
       count: items.length,
-      total: items.reduce((s, i) => s + i.priceArs, 0),
-      has: (photoId) => items.some((i) => i.photoId === photoId),
+      subtotal: cuenta.subtotal,
+      total: cuenta.total,
+      cuenta,
+      has: (photoId: string) => items.some((i) => i.photoId === photoId),
       add,
       remove,
       toggle,
       clear,
       ready,
-    }),
-    [items, add, remove, toggle, clear, ready],
-  );
+    };
+  }, [items, add, remove, toggle, clear, ready]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { Gallery } from "@/components/gallery";
 import { db } from "@/lib/db";
+import { textoDeEscalones } from "@/lib/descuentos";
 import { fecha, plural, precio } from "@/lib/format";
 import { PHOTOS_PER_PAGE, photoSelect, toPhotoDTO } from "@/lib/photos";
 
@@ -46,6 +47,12 @@ export default async function EventoPage({ params }: Props) {
             <span className="cifra">{precio(evento.priceArs)}</span> por foto
           </span>
         </div>
+
+        {/* Un descuento que el comprador no ve no lo hace agregar una foto más. */}
+        <p className="mt-4 text-sm text-muted">
+          Llevando varias sale menos:{" "}
+          <span className="text-accent">{textoDeEscalones()}</span>.
+        </p>
       </section>
 
       <Gallery

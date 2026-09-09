@@ -6,13 +6,73 @@ import { revalidatePath } from "next/cache";
 import { Uploader } from "@/components/uploader";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
-import { fechaBreve, plural, precio } from "@/lib/format";
-import { publicUrl } from "@/lib/storage";
+import { fechaBreve, plural } from "@/lib/format";
+import { deleteObject, getObject, publicUrl, putObject } from "@/lib/storage";
+import { renderPortada } from "@/lib/watermark";
 
 export const dynamic = "force-dynamic";
+/// Elegir portada baja el original del bucket y lo vuelve a procesar, que tarda
+/// más que lo que Vercel le da a una petición común.
+export const maxDuration = 60;
 export const metadata: Metadata = { title: "Editar partido", robots: { index: false } };
 
 type Props = { params: Promise<{ id: string }> };
+
+async function guardarPrecio(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const id = String(formData.get("eventId") ?? "");
+  const pedido = Number(formData.get("priceArs"));
+  if (!id || !Number.isFinite(pedido) || pedido < 1) return;
+
+  await db.event.update({ where: { id }, data: { priceArs: Math.round(pedido) } });
+
+  // Las compras ya hechas no se tocan: cada renglón de una orden guarda el
+  // precio que la foto tenía ese día.
+  revalidatePath(`/admin/evento/${id}`);
+  revalidatePath("/");
+}
+
+async function usarDePortada(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const photoId = String(formData.get("photoId") ?? "");
+  // De qué partido es lo dice la foto, no el formulario: así no hay manera de
+  // pedir la foto de un partido como portada de otro.
+  const foto = await db.photo.findUnique({
+    where: { id: photoId },
+    select: { originalKey: true, eventId: true },
+  });
+  if (!foto) return;
+
+  const id = foto.eventId;
+  const anterior = (
+    await db.event.findUnique({ where: { id }, select: { coverKey: true } })
+  )?.coverKey;
+
+  const original = await getObject("private", foto.originalKey);
+  const portada = await renderPortada(original);
+
+  // Clave nueva en cada cambio: las fotos públicas se publican con caché de un
+  // año, así que pisar la misma dejaría la portada vieja dando vueltas.
+  const coverKey = `portada/${id}/${photoId}.${Date.now().toString(36)}.jpg`;
+  await putObject("public", coverKey, portada, "image/jpeg");
+
+  await db.event.update({ where: { id }, data: { coverKey } });
+
+  // Recién con la base apuntando a la nueva se borra la anterior, y sólo si era
+  // una portada: antes de que esto existiera podía apuntar a una miniatura que
+  // se sigue usando en la galería.
+  if (anterior && anterior !== coverKey && anterior.startsWith("portada/")) {
+    await deleteObject("public", anterior).catch(() => {});
+  }
+
+  revalidatePath(`/admin/evento/${id}`);
+  revalidatePath("/");
+}
+
 
 export default async function AdminEventoPage({ params }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
@@ -58,7 +118,6 @@ export default async function AdminEventoPage({ params }: Props) {
           <p className="mt-2 text-sm text-muted tabular-nums">
             {fechaBreve(evento.date)}
             {evento.location ? ` · ${evento.location}` : ""} ·{" "}
-            {precio(evento.priceArs)} por foto ·{" "}
             {plural(evento._count.photos, "foto", "fotos")}
           </p>
         </div>
@@ -87,28 +146,105 @@ export default async function AdminEventoPage({ params }: Props) {
         </div>
       </div>
 
+      <section className="border border-line rounded-lg p-5 mb-10 grid gap-6 sm:grid-cols-2">
+        <div>
+          <h2 className="etiqueta text-muted mb-1">Precio por foto</h2>
+          <p className="text-sm text-muted mb-4 max-w-prose">
+            Se puede cambiar cuando quieras. Las compras ya hechas no se tocan: cada una
+            guardó el precio que la foto tenía ese día.
+          </p>
+          <form action={guardarPrecio} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="eventId" value={evento.id} />
+            <div>
+              <label htmlFor="priceArs" className="etiqueta text-muted block mb-1.5">
+                Pesos
+              </label>
+              <input
+                id="priceArs"
+                name="priceArs"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                defaultValue={evento.priceArs}
+                className="w-40 bg-surface border border-line rounded-md px-3 py-2.5 cifra focus:border-accent outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 hover:opacity-90 transition-opacity"
+            >
+              Guardar
+            </button>
+          </form>
+        </div>
+
+        <div>
+          <h2 className="etiqueta text-muted mb-1">Portada</h2>
+          <p className="text-sm text-muted mb-4 max-w-prose">
+            Es la foto que representa al partido en la página principal. Va{" "}
+            <span className="text-ink">sin marca de agua</span>, para que invite a entrar,
+            pero del mismo tamaño chico que una miniatura. Elegila abajo.
+          </p>
+          <div className="aspect-[3/2] max-w-64 bg-surface-2 rounded-md overflow-hidden border border-line">
+            {evento.coverKey ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={publicUrl(evento.coverKey)}
+                alt="Portada del partido"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full grid place-items-center text-xs text-muted px-4 text-center">
+                Sin elegir: se usa la primera foto, con marca de agua
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       <Uploader eventId={evento.id} />
 
       {evento.photos.length > 0 && (
         <section className="mt-12">
           <h2 className="etiqueta text-muted mb-4">Últimas cargadas</h2>
           <ul className="grid gap-3 grid-cols-3 sm:grid-cols-5 lg:grid-cols-6">
-            {evento.photos.map((photo) => (
-              <li key={photo.id}>
-                <div className="aspect-[3/2] bg-surface rounded overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={publicUrl(photo.thumbKey)}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <span className="etiqueta text-[0.6rem] text-muted mt-1 block">
-                  #{photo.code}
-                </span>
-              </li>
-            ))}
+            {evento.photos.map((photo) => {
+              const esPortada = evento.coverKey?.startsWith(`portada/${id}/${photo.id}.`);
+              return (
+                <li key={photo.id}>
+                  <div
+                    className={`aspect-[3/2] bg-surface rounded overflow-hidden border ${
+                      esPortada ? "border-accent" : "border-transparent"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={publicUrl(photo.thumbKey)}
+                      alt=""
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2 mt-1">
+                    <span className="etiqueta text-[0.6rem] text-muted">#{photo.code}</span>
+                    {esPortada ? (
+                      <span className="etiqueta text-[0.6rem] text-accent">Portada</span>
+                    ) : (
+                      <form action={usarDePortada}>
+                        <input type="hidden" name="photoId" value={photo.id} />
+                        <button
+                          type="submit"
+                          className="etiqueta text-[0.6rem] text-muted hover:text-accent transition-colors"
+                        >
+                          Portada
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

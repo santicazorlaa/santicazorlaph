@@ -282,6 +282,23 @@ export async function renderPreview(original: Buffer, ajustes?: AjustesDeFoto) {
   return render(original, { tipo: "ladoMayor", px: PREVIEW_LADO_MAYOR }, estiloPreview(a));
 }
 
+/**
+ * La portada del partido: la única imagen que sale sin marca de agua, a
+ * propósito, porque es la que invita a entrar y con la marca encima no invita.
+ *
+ * Sale al mismo tamaño y con la misma compresión que una miniatura. Eso es lo
+ * que hace aceptable el riesgo: es una sola foto por partido, chica, de la que
+ * no se puede sacar gran cosa. Agrandarla o mejorarle la calidad sí sería
+ * regalar una foto.
+ */
+export function renderPortada(original: Buffer) {
+  return sharp(original, { failOn: "none" })
+    .rotate() // respeta la orientación EXIF antes de descartar la metadata
+    .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+    .jpeg({ quality: CALIDAD_THUMB, progressive: true, mozjpeg: true })
+    .toBuffer();
+}
+
 export type ProcessedPhoto = {
   thumb: Buffer;
   preview: Buffer;

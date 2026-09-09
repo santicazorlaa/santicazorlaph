@@ -3,6 +3,7 @@ import "server-only";
 import { customAlphabet } from "nanoid";
 
 import { db } from "./db";
+import { calcular, repartir } from "./descuentos";
 import { enviarMailDeCompra } from "./email";
 import { mercadopago as mpEnv } from "./env";
 import { createPreference, getPayment } from "./mercadopago";
@@ -53,7 +54,17 @@ export async function createOrder(photoIds: string[], email: string) {
     throw new OrderError("Algunas fotos ya no están disponibles");
   }
 
-  const totalArs = photos.reduce((sum, p) => sum + p.event.priceArs, 0);
+  // El descuento por cantidad se calcula acá, con los precios de la base. Lo
+  // que el navegador haya mostrado no interviene.
+  const subtotal = photos.reduce((sum, p) => sum + p.event.priceArs, 0);
+  const { total: totalArs } = calcular(subtotal, photos.length);
+
+  // A MercadoPago se le manda una línea por foto, así que el descuento hay que
+  // repartirlo entre esas líneas: si no, cobraría el precio de lista.
+  const precios = repartir(
+    photos.map((p) => p.event.priceArs),
+    totalArs,
+  );
 
   const order = await db.order.create({
     data: {
@@ -62,7 +73,7 @@ export async function createOrder(photoIds: string[], email: string) {
       totalArs,
       status: OrderStatus.PENDING,
       items: {
-        create: photos.map((p) => ({ photoId: p.id, priceArs: p.event.priceArs })),
+        create: photos.map((p, i) => ({ photoId: p.id, priceArs: precios[i] })),
       },
     },
   });
@@ -76,11 +87,11 @@ export async function createOrder(photoIds: string[], email: string) {
       orderId: order.id,
       orderToken: order.token,
       email,
-      items: photos.map((p) => ({
+      items: photos.map((p, i) => ({
         id: p.id,
         title: `Foto ${p.code} · ${p.event.title}`,
         quantity: 1,
-        unitPrice: p.event.priceArs,
+        unitPrice: precios[i],
       })),
     }));
   } catch (error) {

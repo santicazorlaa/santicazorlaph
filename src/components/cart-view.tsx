@@ -4,10 +4,19 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { useCart } from "./cart-context";
-import { precio } from "@/lib/format";
+import { plural, precio } from "@/lib/format";
+import { proximoEscalon } from "@/lib/descuentos";
 
 export function CartView() {
   const cart = useCart();
+
+  // Cuántas fotos le faltan para el próximo descuento. Decírselo es lo que
+  // convierte el descuento en un motivo para agregar una más.
+  const siguiente = proximoEscalon(cart.count);
+  const faltan =
+    siguiente && cart.count > 0
+      ? { escalon: siguiente, cuantas: siguiente.desde - cart.count }
+      : null;
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -110,14 +119,27 @@ export function CartView() {
             <dt className="text-muted">
               {cart.count} {cart.count === 1 ? "foto" : "fotos"}
             </dt>
-            <dd className="cifra">{precio(cart.total)}</dd>
+            <dd className="cifra">{precio(cart.subtotal)}</dd>
           </div>
+          {cart.cuenta.porcentaje > 0 && (
+            <div className="flex justify-between text-accent">
+              <dt>Descuento por {cart.count} fotos ({cart.cuenta.porcentaje}%)</dt>
+              <dd className="cifra">−{precio(cart.cuenta.ahorro)}</dd>
+            </div>
+          )}
         </dl>
 
-        <div className="flex justify-between items-baseline mb-6">
+        <div className="flex justify-between items-baseline mb-4">
           <span className="etiqueta text-muted">Total</span>
           <span className="cifra text-3xl">{precio(cart.total)}</span>
         </div>
+
+        {faltan && (
+          <p className="text-xs text-muted border border-dashed border-line rounded-md px-3 py-2.5 mb-5">
+            Agregá {plural(faltan.cuantas, "foto más", "fotos más")} y te llevás{" "}
+            <span className="text-accent">{faltan.escalon.porcentaje}% de descuento</span>.
+          </p>
+        )}
 
         <form onSubmit={pagar} className="space-y-3">
           <label htmlFor="email" className="etiqueta text-muted block">

@@ -95,6 +95,19 @@ una vertical se llevaba más del doble de píxeles que una horizontal para ocupa
 menos lugar. Misma idea —que ninguna reciba más que otra para cómo se muestra—,
 distinta forma de mostrar.
 
+**El descuento por cantidad se calcula en un solo archivo,
+`src/lib/descuentos.ts`, sin `server-only`.** Lo usa el navegador para mostrar
+cuánto se ahorra y el servidor para cobrar: si fueran dos cuentas distintas, un
+día no coincidirían. Lo que se cobra lo decide igual el servidor, con los
+precios de la base. A MercadoPago se le manda una línea por foto, así que el
+descuento se reparte entre esas líneas y la diferencia de redondeo se acomoda en
+la última para que el total cierre al peso.
+
+**La portada va sin marca de agua, a propósito.** Es lo que invita a entrar y
+con la marca encima no invita. El riesgo se acota por tamaño: sale a 500 px y
+con la misma compresión que una miniatura, o sea una sola foto chica por
+partido. Agrandarla o mejorarle la calidad sería regalar una foto de verdad.
+
 **La grilla de fotos reparte siempre desde la primera.** Cada foto va a la
 columna más corta mirando sólo las anteriores, así al traer más fotos las que ya
 estaban caen en el mismo lugar. Si se dejara balancear las columnas al navegador
@@ -176,6 +189,11 @@ lo demás de esa tanda está hecho y verificado:
 
 El sitio en producción ya sirve esas fotos, aunque todavía muestre el diseño
 viejo: lo único que cambia al publicar es el diseño y el panel.
+
+En esa misma rama se sumaron después: elegir la portada del partido, editar el
+precio por foto de un partido ya creado, y descuento por cantidad (3 o más 5%,
+6 o más 8%, 10 o más 10%). Santi pidió el 10% como tope; los dos escalones de
+abajo los elegimos nosotros y se cambian en `ESCALONES`.
 
 Después, lo que ya venía de antes:
 
