@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { horaDe, fechaBreve, precio } from "@/lib/format";
 import type { PhotoDTO } from "@/lib/photos";
@@ -23,6 +23,36 @@ const umbral = (ancho: number) => Math.min(120, ancho * 0.2);
 /// Lo que tarda la foto en terminar de entrar cuando se suelta el dedo.
 const DURACION_MS = 260;
 
+/// El alto que de verdad se ve, medido a mano.
+///
+/// En un celular la barra del navegador se superpone a la página: el hueco que
+/// mide `inset-0` es más alto que lo que el ojo alcanza, y todo lo que caiga en
+/// esa franja queda cortado. Como sólo las fotos verticales llegan tan abajo,
+/// el recorte parecía cosa de ellas.
+///
+/// Las unidades `dvh` existen justamente para esto, pero no están en todos los
+/// iPhone: en el que se probó, el navegador descartaba la regla y el visor se
+/// quedaba sin alto. Medirlo con JavaScript no depende de que el navegador
+/// conozca nada nuevo, y `visualViewport` además avisa cuando la barra aparece
+/// o desaparece.
+function useAltoVisible() {
+  return useSyncExternalStore(
+    (avisar) => {
+      const vista = window.visualViewport;
+      vista?.addEventListener("resize", avisar);
+      window.addEventListener("resize", avisar);
+      window.addEventListener("orientationchange", avisar);
+      return () => {
+        vista?.removeEventListener("resize", avisar);
+        window.removeEventListener("resize", avisar);
+        window.removeEventListener("orientationchange", avisar);
+      };
+    },
+    () => Math.round(window.visualViewport?.height ?? window.innerHeight),
+    () => 0,
+  );
+}
+
 export function Lightbox({
   photos,
   index,
@@ -38,6 +68,7 @@ export function Lightbox({
   const carro = useRef<HTMLDivElement>(null);
   const [arrastre, setArrastre] = useState(0);
   const [animando, setAnimando] = useState(false);
+  const altoVisible = useAltoVisible();
 
   useEffect(() => {
     const previo = document.body.style.overflow;
@@ -194,13 +225,11 @@ export function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`Foto ${photo.code}`}
-      // Las dos formas de dar el alto, y en este orden. `inset-0` funciona en
-      // cualquier navegador y es el piso. `h-dvh` lo mejora donde se entienda:
-      // sigue a la barra del navegador cuando aparece y desaparece, que si no
-      // tapa el pie del visor. Si un navegador no conoce esa unidad descarta
-      // la regla y queda el piso; poner sólo `h-dvh` dejaba el visor sin alto
-      // y la foto desaparecía.
-      className="fixed inset-0 h-dvh z-50 bg-ground/95 backdrop-blur-sm flex flex-col"
+      // `inset-0` es el piso: da el alto aunque el JavaScript todavía no haya
+      // medido. El alto medido lo pisa apenas está, y es el que evita que la
+      // barra del navegador se coma el final de una foto vertical.
+      className="fixed inset-0 z-50 bg-ground/95 backdrop-blur-sm flex flex-col"
+      style={altoVisible > 0 ? { height: altoVisible } : undefined}
     >
       <div className="flex items-center justify-between gap-4 px-5 h-14 border-b border-line shrink-0">
         <span className="etiqueta text-muted tabular-nums">
@@ -241,7 +270,12 @@ export function Lightbox({
             return (
               <div
                 key={p ? p.id : `vacia-${corrimiento}`}
-                className="absolute inset-0 grid place-items-center px-3 sm:px-14"
+                // Con relleno en vez de centrado: la imagen de adentro ocupa
+                // toda la caja y se encoge sola. Centrarla y limitarla con
+                // `max-height: 100%` no alcanzaba —ese límite no se aplicaba y
+                // una foto vertical se desbordaba hacia abajo—, y como sólo las
+                // verticales llegan tan lejos, parecía un problema de ellas.
+                className="absolute inset-0 p-3 sm:p-14"
                 // Cada foto ocupa exactamente el ancho del visor, así que
                 // correrla un 100% la deja justo al lado de la anterior.
                 style={{ transform: `translateX(${corrimiento * 100}%)` }}
@@ -252,9 +286,10 @@ export function Lightbox({
                     src={p.previewUrl}
                     alt={corrimiento === 0 ? `Foto ${p.code}` : ""}
                     draggable={false}
-                    // Las dos restricciones tienen que estar: con sólo el alto,
-                    // una foto apaisada se sale por el costado en un celular.
-                    className="max-h-full max-w-full w-auto h-auto object-contain select-none"
+                    // La caja ocupa exactamente el hueco disponible y
+                    // `object-contain` mete la foto adentro sin recortarla ni
+                    // deformarla, sea vertical u horizontal.
+                    className="w-full h-full object-contain select-none"
                   />
                 )}
               </div>
