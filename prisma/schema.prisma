@@ -1,7 +1,3 @@
-// Durante el desarrollo local usamos SQLite y `prisma db push` (sin archivos de
-// migración). Al desplegar se cambia el provider a "postgresql" y recién ahí se
-// genera la primera migración real.
-
 // Sin `output` propio a propósito: si el cliente generado cae dentro de src/,
 // Turbopack termina trazando todo el proyecto y lo mete en el bundle del server.
 generator client {
@@ -9,8 +5,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  // El sitio entra por el pooler, que aguanta muchas visitas a la vez.
   url      = env("DATABASE_URL")
+  // Las migraciones necesitan la conexión directa: no funcionan por el pooler.
+  directUrl = env("DIRECT_URL")
 }
 
 model Event {
