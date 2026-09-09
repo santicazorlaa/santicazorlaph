@@ -34,6 +34,11 @@ export function Lightbox({
 }: Props) {
   const photo = photos[index];
 
+  const pista = useRef<HTMLDivElement>(null);
+  const carro = useRef<HTMLDivElement>(null);
+  const [arrastre, setArrastre] = useState(0);
+  const [animando, setAnimando] = useState(false);
+
   useEffect(() => {
     const previo = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -44,134 +49,134 @@ export function Lightbox({
 
   // --- Deslizar para cambiar de foto ---------------------------------------
   //
-  // Se muestran tres fotos en fila —la anterior, la actual y la siguiente— y se
-  // corre la fila. Durante el arrastre la fila sigue al dedo; al soltar, o se
-  // completa el viaje hacia la vecina o vuelve al lugar. Recién cuando termina
-  // la animación se cambia el índice, y como la vecina queda entonces en el
-  // medio, el salto no se ve.
+  // Todo el gesto vive dentro de este efecto, con escuchas nativas y no con las
+  // de React. La razón es concreta: React entrega `touchmove` en modo pasivo,
+  // que es una promesa al navegador de que nadie va a frenar el gesto. Con esa
+  // promesa hecha, Safari en iPhone se queda con el movimiento y lo interpreta
+  // como desplazar o agrandar la página. Con la escucha nativa podemos pedir
+  // `passive: false` y frenarlo cuando el arrastre es claramente horizontal.
+  //
+  // Se muestran tres fotos —la anterior, la actual y la siguiente— y se corre
+  // el carro que las contiene. Al soltar, o completa el viaje o vuelve al
+  // lugar; el cambio de foto se hace al terminar la animación, cuando la vecina
+  // ya quedó en el medio, así el salto no se ve.
+  useEffect(() => {
+    const zona = pista.current;
+    const carroEl = carro.current;
+    if (!zona || !carroEl) return;
 
-  const pista = useRef<HTMLDivElement>(null);
-  /// Cuánto está corrida la fila. La referencia es la fuente de verdad y el
-  /// estado existe sólo para volver a dibujar: al soltar hay que leer el valor
-  /// de este mismo instante, y el estado puede venir atrasado si el dedo se
-  /// levanta en el mismo respiro en que se movió.
-  const desplazamiento = useRef(0);
-  const [arrastre, setArrastre] = useState(0);
+    const hayAnterior = index > 0;
+    const haySiguiente = index < photos.length - 1;
 
-  const correr = (px: number) => {
-    desplazamiento.current = px;
-    setArrastre(px);
-  };
+    let gesto: { x: number; y: number; horizontal: boolean } | null = null;
+    let corrido = 0;
+    let destino: number | null = null;
+    let reloj: number | null = null;
 
-  const [animando, setAnimando] = useState(false);
-  /// A qué foto hay que saltar cuando termine la animación.
-  const destino = useRef<number | null>(null);
-  /// Cierra el viaje aunque no llegue el evento de fin de transición.
-  const relojDeSeguridad = useRef<number | null>(null);
-  /// Dónde empezó el dedo, y si el gesto ya se decidió como horizontal.
-  const gesto = useRef<{ x: number; y: number; horizontal: boolean } | null>(null);
+    const correr = (px: number) => {
+      corrido = px;
+      setArrastre(px);
+    };
 
-  const hayAnterior = index > 0;
-  const haySiguiente = index < photos.length - 1;
+    const finalizar = () => {
+      if (reloj !== null) {
+        clearTimeout(reloj);
+        reloj = null;
+      }
+      setAnimando(false);
+      if (destino !== null) {
+        const i = destino;
+        destino = null;
+        correr(0);
+        onIndex(i);
+      }
+    };
 
-  const alBajar = (e: React.PointerEvent) => {
-    if (animando) return;
-    gesto.current = { x: e.clientX, y: e.clientY, horizontal: false };
-  };
+    /// Arranca la animación y programa el cierre por las suyas. Esperar sólo al
+    /// evento de fin de transición no alcanza: no llega si la pestaña queda en
+    /// segundo plano. Sin esta red, el visor se trabaría sin responder.
+    const animarHasta = (px: number) => {
+      setAnimando(true);
+      correr(px);
+      if (reloj !== null) clearTimeout(reloj);
+      reloj = window.setTimeout(finalizar, DURACION_MS + 120);
+    };
 
-  const alMover = (e: React.PointerEvent) => {
-    const g = gesto.current;
-    if (!g) return;
-
-    const dx = e.clientX - g.x;
-    const dy = e.clientY - g.y;
-
-    if (!g.horizontal) {
-      // Todavía no sabemos si quiere pasar de foto o desplazar la página.
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      if (Math.abs(dx) <= Math.abs(dy)) {
-        gesto.current = null;
+    const alEmpezar = (e: TouchEvent) => {
+      // Dos dedos es un pellizco, no un deslizamiento: no nos metemos.
+      if (e.touches.length !== 1) {
+        gesto = null;
         return;
       }
-      g.horizontal = true;
-      try {
-        // Seguir al dedo aunque se salga del elemento. Falla si el puntero ya
-        // no está activo —el dedo se levantó entre dos eventos—, y en ese caso
-        // no hay nada que capturar.
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      } catch {
-        // sin captura: el gesto igual funciona mientras no salga del visor
+      const t = e.touches[0];
+      gesto = { x: t.clientX, y: t.clientY, horizontal: false };
+    };
+
+    const alMover = (e: TouchEvent) => {
+      if (!gesto || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - gesto.x;
+      const dy = t.clientY - gesto.y;
+
+      if (!gesto.horizontal) {
+        // Todavía no sabemos para dónde va la mano.
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        if (Math.abs(dx) <= Math.abs(dy)) {
+          gesto = null;
+          return;
+        }
+        gesto.horizontal = true;
       }
-    }
 
-    // Contra el borde no hay adónde ir: se deja arrastrar un poco y cuesta, que
-    // es la forma de decir "hasta acá" sin un cartel.
-    const contraElBorde = (dx > 0 && !hayAnterior) || (dx < 0 && !haySiguiente);
-    correr(contraElBorde ? dx / 4 : dx);
-  };
+      // El gesto es nuestro: que el navegador no haga nada más con él.
+      e.preventDefault();
 
-  /// Cierra el viaje: deja de animar y, si había que cambiar de foto, cambia.
-  /// La vecina pasa a estar en el medio, así que volver el desplazamiento a
-  /// cero muestra exactamente lo mismo que ya se veía.
-  const finalizar = () => {
-    if (relojDeSeguridad.current !== null) {
-      clearTimeout(relojDeSeguridad.current);
-      relojDeSeguridad.current = null;
-    }
-    setAnimando(false);
-    if (destino.current !== null) {
-      onIndex(destino.current);
-      destino.current = null;
-      correr(0);
-    }
-  };
+      // Contra el borde no hay adónde ir: se deja arrastrar un poco y cuesta,
+      // que es la forma de decir "hasta acá" sin un cartel.
+      const contraElBorde = (dx > 0 && !hayAnterior) || (dx < 0 && !haySiguiente);
+      correr(contraElBorde ? dx / 4 : dx);
+    };
 
-  /// Arranca la animación y programa el cierre por las suyas. Esperar sólo al
-  /// evento de fin de transición no alcanza: no llega si la pestaña está en
-  /// segundo plano, ni si el destino resulta ser el punto donde ya estaba. Sin
-  /// esta red, el visor se quedaría trabado sin responder.
-  const animarHasta = (px: number) => {
-    setAnimando(true);
-    correr(px);
-    if (relojDeSeguridad.current !== null) clearTimeout(relojDeSeguridad.current);
-    relojDeSeguridad.current = window.setTimeout(finalizar, DURACION_MS + 120);
-  };
+    const alSoltar = () => {
+      const g = gesto;
+      gesto = null;
+      if (!g?.horizontal) return;
 
-  const alSoltar = () => {
-    const g = gesto.current;
-    gesto.current = null;
-    if (!g?.horizontal) return;
+      const ancho = zona.clientWidth;
+      const pasa = Math.abs(corrido) > umbral(ancho);
+      const haciaSiguiente = corrido < 0 && haySiguiente;
+      const haciaAnterior = corrido > 0 && hayAnterior;
 
-    const ancho = pista.current?.clientWidth ?? 0;
-    const corrido = desplazamiento.current;
-    const pasa = Math.abs(corrido) > umbral(ancho);
-    const haciaSiguiente = corrido < 0 && haySiguiente;
-    const haciaAnterior = corrido > 0 && hayAnterior;
+      if (pasa && (haciaSiguiente || haciaAnterior)) {
+        destino = index + (haciaSiguiente ? 1 : -1);
+        animarHasta(haciaSiguiente ? -ancho : ancho);
+        return;
+      }
 
-    if (pasa && (haciaSiguiente || haciaAnterior)) {
-      destino.current = index + (haciaSiguiente ? 1 : -1);
-      animarHasta(haciaSiguiente ? -ancho : ancho);
-      return;
-    }
+      if (corrido === 0) return; // no se movió: no hay nada que devolver
+      animarHasta(0);
+    };
 
-    if (corrido === 0) return; // no se movió: no hay nada que devolver
-    animarHasta(0);
-  };
+    const alTerminarAnimacion = (e: TransitionEvent) => {
+      if (e.propertyName !== "transform" || e.target !== carroEl) return;
+      finalizar();
+    };
 
-  const alTerminarAnimacion = (e: React.TransitionEvent) => {
-    if (e.propertyName !== "transform") return;
-    finalizar();
-  };
+    zona.addEventListener("touchstart", alEmpezar, { passive: true });
+    zona.addEventListener("touchmove", alMover, { passive: false });
+    zona.addEventListener("touchend", alSoltar);
+    zona.addEventListener("touchcancel", alSoltar);
+    carroEl.addEventListener("transitionend", alTerminarAnimacion);
 
-  // Si el visor se cierra a mitad de un viaje, no dejar el reloj corriendo.
-  // Va acá abajo y no junto al efecto de arriba a propósito: React no permite
-  // modificar después una referencia que un efecto anterior ya usó.
-  useEffect(
-    () => () => {
-      if (relojDeSeguridad.current !== null) clearTimeout(relojDeSeguridad.current);
-    },
-    [],
-  );
+    return () => {
+      if (reloj !== null) clearTimeout(reloj);
+      zona.removeEventListener("touchstart", alEmpezar);
+      zona.removeEventListener("touchmove", alMover);
+      zona.removeEventListener("touchend", alSoltar);
+      zona.removeEventListener("touchcancel", alSoltar);
+      carroEl.removeEventListener("transitionend", alTerminarAnimacion);
+    };
+  }, [index, photos.length, onIndex]);
 
   const tomada = photo.tomadaEn ? new Date(photo.tomadaEn) : null;
 
@@ -189,7 +194,9 @@ export function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={`Foto ${photo.code}`}
-      className="fixed inset-0 z-50 bg-ground/95 backdrop-blur-sm flex flex-col"
+      // Alto dinámico y no `inset-0`: en un celular la barra del navegador
+      // aparece y desaparece, y con el alto fijo el pie del visor queda tapado.
+      className="fixed left-0 top-0 w-full h-dvh z-50 bg-ground/95 backdrop-blur-sm flex flex-col"
     >
       <div className="flex items-center justify-between gap-4 px-5 h-14 border-b border-line shrink-0">
         <span className="etiqueta text-muted tabular-nums">
@@ -210,35 +217,36 @@ export function Lightbox({
       <div
         ref={pista}
         className="relative flex-1 min-h-0 overflow-hidden"
-        // Vertical se lo deja al navegador; lo horizontal lo manejamos nosotros.
-        style={{ touchAction: "pan-y" }}
-        onPointerDown={alBajar}
-        onPointerMove={alMover}
-        onPointerUp={alSoltar}
-        onPointerCancel={alSoltar}
+        // Acá adentro el gesto lo manejamos nosotros: sin esto Safari se lleva
+        // el movimiento y termina agrandando la página en vez de pasar de foto.
+        style={{ touchAction: "none" }}
       >
         <div
-          className="flex h-full w-[300%]"
+          ref={carro}
+          className="absolute inset-0"
           style={{
-            transform: `translateX(calc(-33.3333% + ${arrastre}px))`,
+            transform: `translateX(${arrastre}px)`,
             transition: animando
               ? `transform ${DURACION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
               : "none",
           }}
-          onTransitionEnd={alTerminarAnimacion}
         >
-          {[index - 1, index, index + 1].map((i, ranura) => {
+          {[-1, 0, 1].map((corrimiento) => {
+            const i = index + corrimiento;
             const p = photos[i];
             return (
               <div
-                key={p ? p.id : `vacia-${ranura}`}
-                className="w-1/3 h-full shrink-0 grid place-items-center px-3 sm:px-14"
+                key={p ? p.id : `vacia-${corrimiento}`}
+                className="absolute inset-0 grid place-items-center px-3 sm:px-14"
+                // Cada foto ocupa exactamente el ancho del visor, así que
+                // correrla un 100% la deja justo al lado de la anterior.
+                style={{ transform: `translateX(${corrimiento * 100}%)` }}
               >
                 {p && (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={p.previewUrl}
-                    alt={i === index ? `Foto ${p.code}` : ""}
+                    alt={corrimiento === 0 ? `Foto ${p.code}` : ""}
                     draggable={false}
                     // Las dos restricciones tienen que estar: con sólo el alto,
                     // una foto apaisada se sale por el costado en un celular.
@@ -251,20 +259,20 @@ export function Lightbox({
         </div>
 
         <button
-          onClick={() => hayAnterior && onIndex(index - 1)}
-          disabled={!hayAnterior}
+          onClick={() => index > 0 && onIndex(index - 1)}
+          disabled={index === 0}
           aria-label="Foto anterior"
           className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full border border-line bg-ground/70 backdrop-blur-sm disabled:opacity-25 con-mouse:hover:border-accent transition-colors"
         >
-          ‹
+          &lsaquo;
         </button>
         <button
-          onClick={() => haySiguiente && onIndex(index + 1)}
-          disabled={!haySiguiente}
+          onClick={() => index < photos.length - 1 && onIndex(index + 1)}
+          disabled={index === photos.length - 1}
           aria-label="Foto siguiente"
           className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 grid place-items-center rounded-full border border-line bg-ground/70 backdrop-blur-sm disabled:opacity-25 con-mouse:hover:border-accent transition-colors"
         >
-          ›
+          &rsaquo;
         </button>
       </div>
 
