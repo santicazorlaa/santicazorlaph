@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import {
-  acotarOpacidad,
+  acotar,
+  CALIDAD_PREVIEW,
   guardarAjuste,
   OPACIDAD_CENTRO,
   OPACIDAD_MOSAICO,
@@ -24,14 +25,17 @@ export async function POST(request: Request) {
   // La intensidad no pertenece a un slot: es un ajuste del sitio, así que se
   // resuelve antes de exigir que venga un slot válido.
   if (accion === "opacidad") {
-    const porcentaje = (campo: string) => {
+    // El mosaico y el centro viajan en porcentaje y se guardan de 0 a 1; la
+    // calidad JPEG ya viene en la escala en que se guarda.
+    const leer = (campo: string, clave: string, dividir: number) => {
       const n = Number(form.get(campo));
-      return Number.isFinite(n) ? acotarOpacidad(n / 100) : null;
+      return Number.isFinite(n) ? acotar(clave, n / dividir) : null;
     };
 
-    const mosaico = porcentaje("mosaico");
-    const centro = porcentaje("centro");
-    if (mosaico === null || centro === null) {
+    const mosaico = leer("mosaico", OPACIDAD_MOSAICO, 100);
+    const centro = leer("centro", OPACIDAD_CENTRO, 100);
+    const calidad = leer("calidad", CALIDAD_PREVIEW, 1);
+    if (mosaico === null || centro === null || calidad === null) {
       return NextResponse.redirect(`${siteUrl}/admin?marca=opacidad-invalida`, {
         status: 303,
       });
@@ -39,6 +43,7 @@ export async function POST(request: Request) {
 
     await guardarAjuste(OPACIDAD_MOSAICO, String(mosaico));
     await guardarAjuste(OPACIDAD_CENTRO, String(centro));
+    await guardarAjuste(CALIDAD_PREVIEW, String(calidad));
     return NextResponse.redirect(`${siteUrl}/admin?marca=opacidad`, { status: 303 });
   }
 

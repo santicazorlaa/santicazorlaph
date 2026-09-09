@@ -1,22 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DESCRIPCION_SLOT, NOMBRE_SLOT, SLOTS, type Slot } from "@/lib/marca-slots";
 
 type Estado = { slot: Slot; propia: boolean; filename: string | null };
-type Opacidades = { mosaico: number; centro: number };
+type Ajustes = { mosaico: number; centro: number; calidad: number };
 
 const porcentaje = (n: number) => Math.round(n * 100);
+
+/// Lo que se le manda al servidor para previsualizar. La calidad ya viaja en la
+/// escala en que se guarda; las opacidades, en porcentaje.
+const aParametros = (a: Ajustes) =>
+  `mosaico=${a.mosaico}&centro=${a.centro}&calidad=${a.calidad}`;
 
 export function MarcaDeAgua({
   estados,
   aviso,
-  opacidades,
+  ajustes,
 }: {
   estados: Estado[];
   aviso: string | null;
-  opacidades: Opacidades;
+  ajustes: Ajustes;
 }) {
   // El parámetro fuerza a recargar la imagen cuando se cambia la marca; sin él
   // el navegador muestra la anterior.
@@ -25,10 +30,34 @@ export function MarcaDeAgua({
 
   // Los controles se mueven en el navegador y recién se guardan al enviar, así
   // se puede probar cómo queda sin dejarlo aplicado.
-  const [mosaico, setMosaico] = useState(() => porcentaje(opacidades.mosaico));
-  const [centro, setCentro] = useState(() => porcentaje(opacidades.centro));
+  const guardados = {
+    mosaico: porcentaje(ajustes.mosaico),
+    centro: porcentaje(ajustes.centro),
+    calidad: Math.round(ajustes.calidad),
+  };
+  const [mosaico, setMosaico] = useState(guardados.mosaico);
+  const [centro, setCentro] = useState(guardados.centro);
+  const [calidad, setCalidad] = useState(guardados.calidad);
+
+  const actuales = { mosaico, centro, calidad };
   const sinGuardar =
-    mosaico !== porcentaje(opacidades.mosaico) || centro !== porcentaje(opacidades.centro);
+    mosaico !== guardados.mosaico ||
+    centro !== guardados.centro ||
+    calidad !== guardados.calidad;
+
+  // La foto de muestra se vuelve a generar en el servidor, así que no puede
+  // seguir el arrastre del control paso a paso: se espera a que la mano pare.
+  const [enMuestra, setEnMuestra] = useState(actuales);
+  const parametrosActuales = aParametros(actuales);
+  const parametrosEnMuestra = aParametros(enMuestra);
+  const regenerando = parametrosActuales !== parametrosEnMuestra;
+
+  useEffect(() => {
+    if (!regenerando) return;
+    const t = setTimeout(() => setEnMuestra(actuales), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regenerando, parametrosActuales]);
 
   return (
     <section className="border border-line rounded-lg p-5 mb-10">
@@ -145,36 +174,46 @@ export function MarcaDeAgua({
       >
         <input type="hidden" name="accion" value="opacidad" />
 
-        <h3 className="etiqueta text-muted mb-1">Cuánto se ve la marca</h3>
+        <h3 className="etiqueta text-muted mb-1">Cómo se publica cada foto</h3>
         <p className="text-sm text-muted mb-5 max-w-prose">
-          Más fuerte protege mejor la foto; más suave deja apreciarla y ayuda a que la
-          compren. Movelo y mirá abajo cómo queda antes de guardar.
+          Los dos primeros controlan cuánto se ve la marca: más fuerte protege mejor, más
+          suave deja apreciar la foto y ayuda a que la compren. El tercero es la calidad de
+          la foto grande: bajarla le deja menos material a quien quiera robarla y
+          mejorarla con inteligencia artificial, pero también se ve peor. Movelos y mirá
+          abajo cómo queda.
         </p>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-3">
           {(
             [
-              ["mosaico", "Mosaico", mosaico, setMosaico],
-              ["centro", "Marca del centro", centro, setCentro],
+              ["mosaico", "Mosaico", "%", mosaico, setMosaico, 5, 90],
+              ["centro", "Marca del centro", "%", centro, setCentro, 5, 90],
+              ["calidad", "Calidad de la foto grande", "", calidad, setCalidad, 20, 90],
             ] as const
-          ).map(([campo, titulo, valor, setValor]) => (
+          ).map(([campo, titulo, unidad, valor, setValor, minimo, maximo]) => (
             <div key={campo}>
               <label
                 htmlFor={`op-${campo}`}
                 className="flex items-baseline justify-between gap-3 mb-2"
               >
                 <span className="text-sm">{titulo}</span>
-                <span className="cifra text-sm text-accent">{valor}%</span>
+                <span className="cifra text-sm text-accent">
+                  {valor}
+                  {unidad}
+                </span>
               </label>
               <input
                 id={`op-${campo}`}
                 name={campo}
                 type="range"
-                min={5}
-                max={90}
+                min={minimo}
+                max={maximo}
                 step={1}
                 value={valor}
-                onChange={(e) => setValor(Number(e.target.value))}
+                onChange={(e) => {
+                  setValor(Number(e.target.value));
+                  setMostrandoPreview(true);
+                }}
                 className="w-full accent-[var(--color-accent)]"
               />
             </div>
@@ -189,10 +228,23 @@ export function MarcaDeAgua({
           >
             Guardar intensidad
           </button>
-          {sinGuardar && (
+          {sinGuardar ? (
             <span className="text-xs text-muted">
               Sin guardar. Sólo cambia las fotos que subas después.
             </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setMosaico(22);
+                setCentro(26);
+                setCalidad(62);
+                setMostrandoPreview(true);
+              }}
+              className="etiqueta text-muted hover:text-ink transition-colors"
+            >
+              Volver a los valores originales
+            </button>
           )}
         </div>
       </form>
@@ -203,12 +255,15 @@ export function MarcaDeAgua({
             Así queda sobre la última foto que subiste, con el mismo procesamiento que ve
             el comprador. Si moviste los controles, se ve con esos valores aunque todavía
             no los hayas guardado.
+            {regenerando && <span className="text-accent"> Recalculando…</span>}
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/admin/marca/previsualizar?v=${version}&mosaico=${mosaico}&centro=${centro}`}
+            src={`/api/admin/marca/previsualizar?v=${version}&${parametrosEnMuestra}`}
             alt="Previsualización de la marca de agua sobre una foto"
-            className="w-full rounded-md border border-line"
+            className={`w-full rounded-md border border-line transition-opacity ${
+              regenerando ? "opacity-40" : ""
+            }`}
           />
         </div>
       )}

@@ -3,7 +3,13 @@ import sharp from "sharp";
 
 import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { acotarOpacidad, leerOpacidades } from "@/lib/ajustes";
+import {
+  acotar,
+  CALIDAD_PREVIEW,
+  leerAjustesDeFoto,
+  OPACIDAD_CENTRO,
+  OPACIDAD_MOSAICO,
+} from "@/lib/ajustes";
 import { getObject } from "@/lib/storage";
 import { renderPreview } from "@/lib/watermark";
 
@@ -55,16 +61,20 @@ export async function GET(request: Request) {
   original ??= await canchaDeEjemplo();
 
   // Si vienen en la dirección, se usan esas: así el panel muestra cómo queda
-  // el control antes de guardarlo.
+  // cada control antes de guardarlo.
   const params = new URL(request.url).searchParams;
-  const pedido = (campo: string) => {
-    const n = Number(params.get(campo));
-    return Number.isFinite(n) && params.get(campo) !== null ? acotarOpacidad(n / 100) : null;
+  const pedido = (campo: string, clave: string, dividir: number) => {
+    const crudo = params.get(campo);
+    if (crudo === null) return null;
+    const n = Number(crudo);
+    return Number.isFinite(n) ? acotar(clave, n / dividir) : null;
   };
-  const guardadas = await leerOpacidades();
+
+  const guardados = await leerAjustesDeFoto();
   const preview = await renderPreview(original, {
-    mosaico: pedido("mosaico") ?? guardadas.mosaico,
-    centro: pedido("centro") ?? guardadas.centro,
+    mosaico: pedido("mosaico", OPACIDAD_MOSAICO, 100) ?? guardados.mosaico,
+    centro: pedido("centro", OPACIDAD_CENTRO, 100) ?? guardados.centro,
+    calidad: pedido("calidad", CALIDAD_PREVIEW, 1) ?? guardados.calidad,
   });
 
   return new NextResponse(new Uint8Array(preview), {

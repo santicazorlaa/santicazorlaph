@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { MarcaDeAgua } from "@/components/marca-de-agua";
-import { leerOpacidades } from "@/lib/ajustes";
+import { leerAjustesDeFoto } from "@/lib/ajustes";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural, precio, slugify } from "@/lib/format";
@@ -19,8 +19,8 @@ const AVISOS: Record<string, string> = {
   "sin-archivo": "No elegiste ningún archivo.",
   "slot-invalido": "No reconocimos qué marca querías cambiar.",
   opacidad:
-    "Listo: la marca se va a ver con esa intensidad en las fotos que subas de ahora en adelante.",
-  "opacidad-invalida": "Esa intensidad no es un número válido.",
+    "Listo: las fotos que subas de ahora en adelante salen con esos valores. Las que ya están online no cambian hasta que se rehagan.",
+  "opacidad-invalida": "Alguno de esos valores no es un número válido.",
 };
 
 type Props = { searchParams: Promise<{ marca?: string; detalle?: string }> };
@@ -31,7 +31,7 @@ export default async function AdminPage({ searchParams }: Props) {
   const { marca, detalle } = await searchParams;
   const aviso = marca === "error" ? (detalle ?? "No pudimos guardar el archivo") : marca ? (AVISOS[marca] ?? null) : null;
 
-  const opacidades = await leerOpacidades();
+  const ajustesDeFoto = await leerAjustesDeFoto();
   const marcasPropias = await db.watermark.findMany();
   const estadosMarca = SLOTS.map((slot) => {
     const fila = marcasPropias.find((m) => m.slot === slot);
@@ -90,7 +90,7 @@ export default async function AdminPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <MarcaDeAgua estados={estadosMarca} aviso={aviso} opacidades={opacidades} />
+      <MarcaDeAgua estados={estadosMarca} aviso={aviso} ajustes={ajustesDeFoto} />
 
       <section className="border border-line rounded-lg p-5 mb-10">
         <h2 className="etiqueta text-muted mb-4">Nuevo partido</h2>

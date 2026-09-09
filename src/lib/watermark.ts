@@ -5,7 +5,7 @@ import exifr from "exifr";
 import sharp from "sharp";
 import type { OverlayOptions, Sharp } from "sharp";
 
-import { leerOpacidades } from "./ajustes";
+import { leerAjustesDeFoto, type AjustesDeFoto } from "./ajustes";
 import { leerMarca } from "./marca";
 import type { Slot } from "./marca-slots";
 
@@ -14,22 +14,23 @@ import { siteName } from "./env";
 /// Ancho de la grilla del evento. Suficiente para que se vea bien en retina
 /// sin que un partido de 1.500 fotos funda los datos del celular.
 const THUMB_WIDTH = 500;
-/// Ancho de la vista ampliada. Se ve el detalle de la jugada, pero no alcanza
-/// para imprimir ni para pasar por una foto comprada.
+/// Lado más largo de la vista ampliada. No es el ancho, y esa diferencia
+/// importa: el lightbox muestra la foto entera dentro de la pantalla, así que
+/// una foto vertical se ve *más chica* que una horizontal. Midiendo por el
+/// ancho, la vertical se llevaba 820x1230 —más del doble de píxeles— y quedaba
+/// notoriamente mejor que la horizontal aun ocupando menos lugar. Midiendo por
+/// el lado más largo, las dos reciben la misma cantidad de información.
 ///
 /// Estuvo en 1100 hasta septiembre de 2026. Se bajó porque hoy cualquiera le
 /// pasa un reescalador con IA a una imagen que baje del sitio: cuanto menos
-/// información real tenga el archivo, menos tiene con qué trabajar. Subir este
-/// número vuelve a regalar detalle; bajarlo mucho más empieza a estorbar la
-/// decisión de compra, que es lo único que la previsualización tiene que
-/// permitir.
-const PREVIEW_WIDTH = 820;
+/// información real tenga el archivo, menos tiene con qué trabajar.
+const PREVIEW_LADO_MAYOR = 820;
 
-/// Compresión de lo que se muestra. Deliberadamente por debajo de lo que uno
-/// elegiría para lucir la foto: el JPEG agresivo borra justo el grano fino que
-/// un reescalador necesita para inventar detalle creíble.
+/// La miniatura, en cambio, sí se mide por el ancho: en la grilla todas las
+/// fotos ocupan una columna del mismo ancho, así que igualar el ancho es lo que
+/// las deja parejas de nitidez. Es la misma idea que arriba —que ninguna reciba
+/// más que otra para cómo se muestra—, aplicada a otra forma de mostrar.
 const CALIDAD_THUMB = 72;
-const CALIDAD_PREVIEW = 62;
 
 /// Archivos que vienen con el proyecto, en negativo porque la marca se aplica
 /// en blanco sobre la foto. De cada slot se usa el primero que exista.
@@ -191,10 +192,26 @@ type WatermarkStyle = {
   center?: { opacity: number; scale: number };
 };
 
-async function render(original: Buffer, targetWidth: number, style: WatermarkStyle) {
+/// Cómo se decide el tamaño de lo que se publica.
+type Medida =
+  /// Todas terminan con el mismo ancho (la grilla).
+  | { tipo: "ancho"; px: number }
+  /// Todas terminan con el mismo lado largo (la vista ampliada).
+  | { tipo: "ladoMayor"; px: number };
+
+async function render(original: Buffer, medida: Medida, style: WatermarkStyle) {
   const base = sharp(original, { failOn: "none" })
     .rotate() // respeta la orientación EXIF antes de descartar la metadata
-    .resize({ width: targetWidth, withoutEnlargement: true });
+    .resize(
+      medida.tipo === "ancho"
+        ? { width: medida.px, withoutEnlargement: true }
+        : {
+            width: medida.px,
+            height: medida.px,
+            fit: "inside",
+            withoutEnlargement: true,
+          },
+    );
 
   const { width, height } = await base
     .clone()
@@ -233,26 +250,25 @@ async function render(original: Buffer, targetWidth: number, style: WatermarkSty
     .toBuffer();
 }
 
-type Opacidades = { mosaico: number; centro: number };
-
 /// El tamaño y la separación del mosaico están calibrados y no se tocan desde
-/// el panel; lo único que Santi elige es cuánto se ve.
-function estiloThumb(op: Opacidades): WatermarkStyle {
+/// el panel; lo que Santi elige es cuánto se ve la marca y cuánta calidad
+/// conserva la vista ampliada.
+function estiloThumb(a: AjustesDeFoto): WatermarkStyle {
   return {
     quality: CALIDAD_THUMB,
-    tileOpacity: op.mosaico,
+    tileOpacity: a.mosaico,
     tileScale: 0.36,
     tileGap: 0.14,
   };
 }
 
-function estiloPreview(op: Opacidades): WatermarkStyle {
+function estiloPreview(a: AjustesDeFoto): WatermarkStyle {
   return {
-    quality: CALIDAD_PREVIEW,
-    tileOpacity: op.mosaico,
+    quality: a.calidad,
+    tileOpacity: a.mosaico,
     tileScale: 0.2,
     tileGap: 0.16,
-    center: { opacity: op.centro, scale: 0.52 },
+    center: { opacity: a.centro, scale: 0.52 },
   };
 }
 
@@ -261,9 +277,9 @@ function estiloPreview(op: Opacidades): WatermarkStyle {
 ///
 /// Acepta opacidades sueltas para que el panel pueda mostrar el resultado de
 /// mover el control antes de guardarlo.
-export async function renderPreview(original: Buffer, opacidades?: Opacidades) {
-  const op = opacidades ?? (await leerOpacidades());
-  return render(original, PREVIEW_WIDTH, estiloPreview(op));
+export async function renderPreview(original: Buffer, ajustes?: AjustesDeFoto) {
+  const a = ajustes ?? (await leerAjustesDeFoto());
+  return render(original, { tipo: "ladoMayor", px: PREVIEW_LADO_MAYOR }, estiloPreview(a));
 }
 
 export type ProcessedPhoto = {
@@ -286,11 +302,15 @@ export async function processPhoto(original: Buffer): Promise<ProcessedPhoto> {
   const width = (rotated ? meta.height : meta.width) ?? 0;
   const height = (rotated ? meta.width : meta.height) ?? 0;
 
-  const opacidades = await leerOpacidades();
+  const ajustes = await leerAjustesDeFoto();
 
   const [thumb, preview, exif] = await Promise.all([
-    render(original, THUMB_WIDTH, estiloThumb(opacidades)),
-    render(original, PREVIEW_WIDTH, estiloPreview(opacidades)),
+    render(original, { tipo: "ancho", px: THUMB_WIDTH }, estiloThumb(ajustes)),
+    render(
+      original,
+      { tipo: "ladoMayor", px: PREVIEW_LADO_MAYOR },
+      estiloPreview(ajustes),
+    ),
     // Cada marca guarda el lente en un tag distinto, así que los pedimos todos
     // y nos quedamos con el primero que venga.
     exifr
