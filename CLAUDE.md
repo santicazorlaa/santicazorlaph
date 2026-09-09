@@ -92,20 +92,31 @@ que los originales no se filtren, avisos firmados y sin firmar, panel protegido,
 descarga de una compra pagada, y en qué cuenta de MercadoPago está cobrando.
 Hay más scripts en `scripts/`, cada uno con su explicación arriba.
 
-## Estado y qué falta
+## Estado
 
-Funciona de punta a punta: subir fotos, marca de agua, galería, carrito, pago,
-acreditación automática, descarga y mail al comprador. Se hicieron compras
-reales de prueba y todas se acreditaron solas.
+**El sitio está en producción y vendiendo.** Santi confirmó que la plata entra a
+su cuenta. Funciona de punta a punta: subir fotos, marca de agua, galería,
+carrito, pago, acreditación automática, descarga y mail al comprador.
 
-Pendiente:
+Ya subió su primer partido real ("Bayern vs Drink", 60 fotos). El partido de
+prueba "CAT vs Lastenia", con fotos sintéticas, quedó despublicado — no se puede
+borrar porque tiene fotos vendidas en órdenes de prueba, y el esquema protege eso
+a propósito.
 
-1. **Compra real con tarjeta propia.** Santi no pudo: MercadoPago no deja
-   comprarse a uno mismo. Hay que probar como invitado en incógnito, o pedirle a
-   alguien que compre una foto. Falta confirmar que la plata entra a la cuenta y
-   cuánto queda después de la comisión.
-2. **Borrar los datos de prueba** antes de abrir: el partido "CAT vs Lastenia"
-   con fotos sintéticas y las órdenes de prueba. Ojo: el esquema no deja borrar
-   una foto que alguien compró, así que primero van las órdenes.
+Una orden pendiente **no es una alarma**: casi siempre es un checkout abandonado.
+Lo grave es la que esconde un pago aprobado. Para distinguirlas:
+
+```bash
+npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
+```
+
+## Qué falta
+
+1. **Seis partidos "Bayern vs Drink" duplicados y vacíos** (0 fotos), de haber
+   reintentado la creación. Conviene borrarlos —son inofensivos pero ensucian el
+   panel— y ver por qué se crearon repetidos: puede ser que el formulario no dé
+   señal de que ya se envió.
+2. **Sin manera de borrar ni editar un partido desde el panel.** Hoy sólo se
+   puede crear y publicar/despublicar. Por eso los duplicados quedaron ahí.
 3. Ideas para más adelante: búsqueda por selfie, "mis compras" con cuenta,
    descuento por cantidad, aviso al jugador cuando se suben sus fotos.
