@@ -13,6 +13,9 @@ const MP = process.env.MP_ACCESS_TOKEN ?? "";
 const RESEND = process.env.RESEND_API_KEY ?? "";
 const SECRETO_WEBHOOK = process.env.MP_WEBHOOK_SECRET ?? "";
 
+/// Cuenta real de Santi. Si el sitio cobra en otra, algo se configuró mal.
+const CUENTA_REAL = "238509129";
+
 const filas: [string, boolean, string?][] = [];
 function check(nombre: string, ok: boolean, detalle?: string) {
   filas.push([nombre, ok, detalle]);
@@ -145,13 +148,40 @@ async function main() {
     );
   }
 
-  // --- MercadoPago: que credenciales estan activas ---
-  const yo = await fetch("https://api.mercadopago.com/users/me", {
-    headers: { Authorization: `Bearer ${MP}` },
-  }).then((r) => r.json());
-  const esPrueba = (yo.tags ?? []).includes("test_user");
-  console.log(`\n=== MERCADOPAGO ===`);
-  console.log(`  cuenta: ${yo.nickname}  ${esPrueba ? "(DE PRUEBA)" : "(REAL)"}`);
+  // --- MercadoPago: en que cuenta cobra el SITIO PUBLICADO ---
+  //
+  // Lo que importa no son las credenciales de esta maquina sino las del sitio.
+  // El id de la preferencia empieza con el id del vendedor, asi que se crea un
+  // checkout de control, se mira, y se borra.
+  const fotoControl = await db.photo.findFirst({
+    where: { event: { published: true } },
+    select: { id: true },
+  });
+  if (fotoControl) {
+    const r = await fetch(`${SITIO}/api/checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "control@ejemplo.com", photoIds: [fotoControl.id] }),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      const orden = await db.order.findUnique({ where: { token: data.token } });
+      const vendedor = (orden?.mpPreferenceId ?? "").split("-")[0];
+      await db.order.delete({ where: { id: orden!.id } }).catch(() => {});
+
+      const quien = await fetch(`https://api.mercadopago.com/users/${vendedor}`, {
+        headers: { Authorization: `Bearer ${MP}` },
+      })
+        .then((x) => x.json())
+        .catch(() => null);
+
+      console.log(`\n=== MERCADOPAGO ===`);
+      console.log(`  el sitio cobra en la cuenta ${vendedor} (${quien?.nickname ?? "?"})`);
+      check("el sitio cobra en la cuenta real", vendedor === CUENTA_REAL, vendedor);
+    } else {
+      check("el sitio puede crear un pago", false, JSON.stringify(data).slice(0, 60));
+    }
+  }
 
   console.log("\n=== REVISION ===");
   let fallos = 0;
