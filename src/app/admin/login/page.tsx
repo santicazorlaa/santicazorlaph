@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: Props) {
         {error && <p className="text-sm text-danger">Contraseña incorrecta.</p>}
         <button
           type="submit"
-          className="w-full bg-accent text-accent-ink etiqueta rounded-md py-3"
+          className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3"
         >
           Entrar
         </button>

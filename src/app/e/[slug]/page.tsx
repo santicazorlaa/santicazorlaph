@@ -42,7 +42,9 @@ export default async function EventoPage({ params }: Props) {
         <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted tabular-nums">
           {evento.location && <span>{evento.location}</span>}
           <span>{plural(evento._count.photos, "foto", "fotos")}</span>
-          <span>{precio(evento.priceArs)} por foto</span>
+          <span>
+            <span className="cifra">{precio(evento.priceArs)}</span> por foto
+          </span>
         </div>
       </section>
 

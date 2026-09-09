@@ -1,22 +1,44 @@
 @import "tailwindcss";
 
+/* Un teléfono no tiene "pasar el mouse por encima": ahí el hover no ocurre
+   nunca. Todo lo que se revela al pasar por encima tiene que marcarse con esta
+   variante, o en el celular queda escondido para siempre. */
+@custom-variant con-mouse (@media (hover: hover) and (pointer: fine));
+
 @theme {
-  --color-ground: #0b0c0e;
-  --color-surface: #141619;
-  --color-surface-2: #1c1f24;
-  --color-ink: #f4f3f1;
-  --color-muted: #8c919b;
-  --color-line: #24272d;
-  --color-accent: #e9a13b;
-  --color-accent-ink: #14161a;
-  --color-danger: #e07a6b;
+  --color-ground: #0b0d10;
+  --color-surface: #14171c;
+  --color-surface-2: #1c2027;
+  --color-ink: #f2f4f7;
+  --color-muted: #8b929d;
+  --color-line: #23272e;
+
+  /* Dos azules, porque un solo tono no puede hacer los dos trabajos y quedar
+     legible en ambos: el claro se lee sobre el fondo oscuro, el fuerte aguanta
+     texto blanco encima. Cambiar uno sin el otro rompe el contraste. */
+  --color-accent: #5b93ff;
+  --color-accent-solid: #2b6ae8;
+  --color-accent-ink: #ffffff;
+
+  --color-danger: #f08c7e;
   --color-good: #6bbd8e;
 
-  --font-display: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
-  --font-sans: var(--font-barlow), system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
 @layer base {
+  :root {
+    /* Perillas del sistema tipografico. Cambiarlas aca cambia todo el sitio;
+       el muestrario de /estilo las pisa por variante para comparar. */
+    --peso-titulo: 700;
+    --caja-titulo: none;
+    --track-titulo: -0.035em;
+    --interlinea-titulo: 1;
+    --peso-etiqueta: 600;
+    --track-etiqueta: 0.1em;
+  }
+
   html {
     background: var(--color-ground);
     color-scheme: dark;
@@ -42,18 +64,28 @@
 
 @utility titulo {
   font-family: var(--font-display);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 1;
+  font-weight: var(--peso-titulo, 600);
+  text-transform: var(--caja-titulo, uppercase);
+  letter-spacing: var(--track-titulo, 0.01em);
+  line-height: var(--interlinea-titulo, 1);
 }
 
 @utility etiqueta {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: var(--peso-etiqueta, 500);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--track-etiqueta, 0.12em);
   font-size: 0.75rem;
+}
+
+/* Precios y cantidades. Van en la tipografía de títulos y no en la de texto:
+   un número suelto en la fuente de párrafo se lee como algo de sistema, no
+   como parte de la marca. */
+@utility cifra {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 @media (prefers-reduced-motion: reduce) {

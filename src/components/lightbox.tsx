@@ -113,13 +113,13 @@ export function Lightbox({
           </dl>
 
           <div className="flex items-center gap-4 ml-auto">
-            <span className="titulo text-2xl tabular-nums">{precio(priceArs)}</span>
+            <span className="cifra text-2xl">{precio(priceArs)}</span>
             <button
               onClick={onToggle}
               className={`etiqueta rounded-full px-6 py-3 transition-colors ${
                 inCart
                   ? "border border-accent text-accent"
-                  : "bg-accent text-accent-ink hover:opacity-90"
+                  : "bg-accent-solid text-accent-ink hover:opacity-90"
               }`}
             >
               {inCart ? "Quitar del carrito" : "Agregar al carrito"}

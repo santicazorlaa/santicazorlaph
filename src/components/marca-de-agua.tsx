@@ -5,18 +5,30 @@ import { useState } from "react";
 import { DESCRIPCION_SLOT, NOMBRE_SLOT, SLOTS, type Slot } from "@/lib/marca-slots";
 
 type Estado = { slot: Slot; propia: boolean; filename: string | null };
+type Opacidades = { mosaico: number; centro: number };
+
+const porcentaje = (n: number) => Math.round(n * 100);
 
 export function MarcaDeAgua({
   estados,
   aviso,
+  opacidades,
 }: {
   estados: Estado[];
   aviso: string | null;
+  opacidades: Opacidades;
 }) {
   // El parámetro fuerza a recargar la imagen cuando se cambia la marca; sin él
   // el navegador muestra la anterior.
   const [version, setVersion] = useState(() => Date.now());
   const [mostrandoPreview, setMostrandoPreview] = useState(false);
+
+  // Los controles se mueven en el navegador y recién se guardan al enviar, así
+  // se puede probar cómo queda sin dejarlo aplicado.
+  const [mosaico, setMosaico] = useState(() => porcentaje(opacidades.mosaico));
+  const [centro, setCentro] = useState(() => porcentaje(opacidades.centro));
+  const sinGuardar =
+    mosaico !== porcentaje(opacidades.mosaico) || centro !== porcentaje(opacidades.centro);
 
   return (
     <section className="border border-line rounded-lg p-5 mb-10">
@@ -103,7 +115,7 @@ export function MarcaDeAgua({
                 />
                 <button
                   type="submit"
-                  className="etiqueta bg-accent text-accent-ink rounded py-2.5 hover:opacity-90 transition-opacity"
+                  className="etiqueta bg-accent-solid text-accent-ink rounded py-2.5 hover:opacity-90 transition-opacity"
                 >
                   Subir
                 </button>
@@ -126,15 +138,75 @@ export function MarcaDeAgua({
         })}
       </div>
 
+      <form
+        method="POST"
+        action="/api/admin/marca"
+        className="mt-6 pt-5 border-t border-line"
+      >
+        <input type="hidden" name="accion" value="opacidad" />
+
+        <h3 className="etiqueta text-muted mb-1">Cuánto se ve la marca</h3>
+        <p className="text-sm text-muted mb-5 max-w-prose">
+          Más fuerte protege mejor la foto; más suave deja apreciarla y ayuda a que la
+          compren. Movelo y mirá abajo cómo queda antes de guardar.
+        </p>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          {(
+            [
+              ["mosaico", "Mosaico", mosaico, setMosaico],
+              ["centro", "Marca del centro", centro, setCentro],
+            ] as const
+          ).map(([campo, titulo, valor, setValor]) => (
+            <div key={campo}>
+              <label
+                htmlFor={`op-${campo}`}
+                className="flex items-baseline justify-between gap-3 mb-2"
+              >
+                <span className="text-sm">{titulo}</span>
+                <span className="cifra text-sm text-accent">{valor}%</span>
+              </label>
+              <input
+                id={`op-${campo}`}
+                name={campo}
+                type="range"
+                min={5}
+                max={90}
+                step={1}
+                value={valor}
+                onChange={(e) => setValor(Number(e.target.value))}
+                className="w-full accent-[var(--color-accent)]"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-4">
+          <button
+            type="submit"
+            disabled={!sinGuardar}
+            className="etiqueta bg-accent-solid text-accent-ink rounded px-6 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-40"
+          >
+            Guardar intensidad
+          </button>
+          {sinGuardar && (
+            <span className="text-xs text-muted">
+              Sin guardar. Sólo cambia las fotos que subas después.
+            </span>
+          )}
+        </div>
+      </form>
+
       {mostrandoPreview && (
         <div className="mt-6 pt-5 border-t border-line">
           <p className="text-xs text-muted mb-3">
             Así queda sobre la última foto que subiste, con el mismo procesamiento que ve
-            el comprador.
+            el comprador. Si moviste los controles, se ve con esos valores aunque todavía
+            no los hayas guardado.
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/admin/marca/previsualizar?v=${version}`}
+            src={`/api/admin/marca/previsualizar?v=${version}&mosaico=${mosaico}&centro=${centro}`}
             alt="Previsualización de la marca de agua sobre una foto"
             className="w-full rounded-md border border-line"
           />

@@ -104,7 +104,7 @@ export function Uploader({ eventId }: { eventId: string }) {
         multiple
         disabled={trabajando}
         onChange={(e) => e.target.files?.length && subir(e.target.files)}
-        className="block w-full text-sm text-muted file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-5 file:py-2.5 file:text-accent-ink file:font-medium file:uppercase file:tracking-wider file:text-xs disabled:opacity-50"
+        className="block w-full text-sm text-muted file:mr-4 file:rounded-md file:border-0 file:bg-accent-solid file:px-5 file:py-2.5 file:text-accent-ink file:font-medium file:uppercase file:tracking-wider file:text-xs disabled:opacity-50"
       />
 
       <p className="mt-3 text-xs text-muted">

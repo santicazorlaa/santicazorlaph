@@ -76,7 +76,7 @@ export default async function Home() {
                         <span className="text-muted tabular-nums">
                           {plural(evento._count.photos, "foto", "fotos")}
                         </span>
-                        <span className="tabular-nums">{precio(evento.priceArs)} c/u</span>
+                        <span className="cifra">{precio(evento.priceArs)} c/u</span>
                       </p>
                     </div>
                   </Link>

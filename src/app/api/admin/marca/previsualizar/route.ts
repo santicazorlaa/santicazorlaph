@@ -3,6 +3,7 @@ import sharp from "sharp";
 
 import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { acotarOpacidad, leerOpacidades } from "@/lib/ajustes";
 import { getObject } from "@/lib/storage";
 import { renderPreview } from "@/lib/watermark";
 
@@ -37,7 +38,7 @@ function canchaDeEjemplo() {
  * Usa exactamente el mismo render que la vista ampliada del sitio, así que lo
  * que se ve acá es lo que van a ver los compradores.
  */
-export async function GET() {
+export async function GET(request: Request) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -53,7 +54,18 @@ export async function GET() {
   }
   original ??= await canchaDeEjemplo();
 
-  const preview = await renderPreview(original);
+  // Si vienen en la dirección, se usan esas: así el panel muestra cómo queda
+  // el control antes de guardarlo.
+  const params = new URL(request.url).searchParams;
+  const pedido = (campo: string) => {
+    const n = Number(params.get(campo));
+    return Number.isFinite(n) && params.get(campo) !== null ? acotarOpacidad(n / 100) : null;
+  };
+  const guardadas = await leerOpacidades();
+  const preview = await renderPreview(original, {
+    mosaico: pedido("mosaico") ?? guardadas.mosaico,
+    centro: pedido("centro") ?? guardadas.centro,
+  });
 
   return new NextResponse(new Uint8Array(preview), {
     headers: {

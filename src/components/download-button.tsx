@@ -29,7 +29,7 @@ export function DownloadButton({ token, photoId }: { token: string; photoId: str
     <button
       onClick={descargar}
       disabled={estado === "pidiendo"}
-      className="etiqueta text-[0.65rem] bg-accent text-accent-ink rounded px-3 py-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+      className="etiqueta text-[0.65rem] bg-accent-solid text-accent-ink rounded px-3 py-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
     >
       {estado === "pidiendo" ? "…" : estado === "error" ? "Reintentar" : "Descargar"}
     </button>

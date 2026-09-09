@@ -78,7 +78,7 @@ export default async function AdminEventoPage({ params }: Props) {
               className={`etiqueta rounded-full px-5 py-2.5 border transition-colors ${
                 evento.published
                   ? "border-line text-muted hover:border-danger hover:text-danger"
-                  : "bg-accent text-accent-ink border-accent"
+                  : "bg-accent-solid text-accent-ink border-accent"
               }`}
             >
               {evento.published ? "Despublicar" : "Publicar"}

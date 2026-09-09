@@ -1,12 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useCart, type CartItem } from "./cart-context";
 import { Lightbox } from "./lightbox";
 import type { PhotoDTO } from "@/lib/photos";
 import { precio } from "@/lib/format";
+
+/// Cuántas columnas entran según el ancho. Los cortes coinciden con los de
+/// Tailwind (sm y lg) para que la grilla acompañe al resto del sitio.
+function columnasSegunAncho(ancho: number) {
+  if (ancho >= 1024) return 4;
+  if (ancho >= 640) return 3;
+  return 2;
+}
+
+/// Cuántas columnas entran ahora mismo, atento a los cambios de tamaño.
+///
+/// Se suscribe al `resize` en vez de guardar el número en un estado: así no hay
+/// un render de más en cada cambio, y en el servidor —donde no existe ventana—
+/// devuelve 2, que es lo que corresponde a un celular.
+function useColumnas() {
+  return useSyncExternalStore(
+    (avisar) => {
+      window.addEventListener("resize", avisar);
+      return () => window.removeEventListener("resize", avisar);
+    },
+    () => columnasSegunAncho(window.innerWidth),
+    () => 2,
+  );
+}
+
+type Ubicada = { photo: PhotoDTO; indice: number };
+
+/// Reparte las fotos en columnas mandando cada una a la columna más corta,
+/// midiendo el alto en "anchos de columna" (una foto apaisada 3:2 mide 0,66).
+///
+/// Recorrer siempre desde el principio no es un descuido: como cada foto se
+/// decide mirando sólo las anteriores, al traer más fotos las que ya estaban
+/// caen exactamente en el mismo lugar. Si en cambio dejáramos que el navegador
+/// balancee las columnas solo, cada "Cargar más" te movería de lugar todas las
+/// fotos de arriba, justo cuando estás mirándolas.
+function repartir(photos: PhotoDTO[], columnas: number): Ubicada[][] {
+  const cols: Ubicada[][] = Array.from({ length: columnas }, () => []);
+  const altos = new Array<number>(columnas).fill(0);
+
+  photos.forEach((photo, indice) => {
+    let masCorta = 0;
+    for (let c = 1; c < columnas; c++) {
+      if (altos[c] < altos[masCorta]) masCorta = c;
+    }
+    cols[masCorta].push({ photo, indice });
+    // ratio = ancho / alto, así que el alto relativo es su inversa.
+    altos[masCorta] += 1 / (photo.ratio || 1.5);
+  });
+
+  return cols;
+}
 
 type Props = {
   eventSlug: string;
@@ -28,6 +79,7 @@ export function Gallery({
   const [loading, setLoading] = useState(false);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [codigo, setCodigo] = useState("");
+  const columnas = useColumnas();
   const [buscando, setBuscando] = useState(false);
   const [sinResultado, setSinResultado] = useState(false);
   const filtrando = useRef(false);
@@ -144,46 +196,53 @@ export function Gallery({
         </p>
       )}
 
-      <ul className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-        {photos.map((photo, i) => {
-          const enCarrito = cart.has(photo.id);
-          return (
-            <li key={photo.id} className="relative group">
-              <button
-                type="button"
-                onClick={() => setOpenIndex(i)}
-                className="block w-full aspect-[3/2] bg-surface rounded-md overflow-hidden"
-                aria-label={`Ver foto ${photo.code} en grande`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.thumbUrl}
-                  alt={`Foto ${photo.code}`}
-                  loading="lazy"
-                  className="w-full h-full object-cover"
-                />
-              </button>
+      <div className="flex gap-3 items-start">
+        {repartir(photos, columnas).map((columna, c) => (
+          <ul key={c} className="flex-1 min-w-0 flex flex-col gap-3">
+            {columna.map(({ photo, indice }) => {
+              const enCarrito = cart.has(photo.id);
+              return (
+                <li key={photo.id} className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => setOpenIndex(indice)}
+                    className="block w-full bg-surface rounded-md overflow-hidden ring-1 ring-transparent con-mouse:group-hover:ring-accent/70 active:scale-[0.985] transition-[transform,box-shadow] duration-200"
+                    aria-label={`Ver foto ${photo.code} en grande`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.thumbUrl}
+                      alt={`Foto ${photo.code}`}
+                      loading="lazy"
+                      // El alto sale de la proporción real de la foto: así la
+                      // grilla se acomoda a cada imagen y ninguna se recorta.
+                      style={{ aspectRatio: String(photo.ratio || 1.5) }}
+                      className="w-full h-auto object-cover con-mouse:group-hover:scale-[1.03] con-mouse:group-hover:brightness-110 transition-[transform,filter] duration-500 ease-out"
+                    />
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => cart.toggle(toItem(photo))}
-                aria-pressed={enCarrito}
-                className={`absolute inset-x-2 bottom-2 etiqueta rounded px-2 py-1.5 transition-colors ${
-                  enCarrito
-                    ? "bg-accent text-accent-ink"
-                    : "bg-ground/80 text-ink opacity-0 group-hover:opacity-100 focus-visible:opacity-100 backdrop-blur-sm"
-                }`}
-              >
-                {enCarrito ? "En el carrito" : "Agregar"}
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => cart.toggle(toItem(photo))}
+                    aria-pressed={enCarrito}
+                    className={`absolute inset-x-2 bottom-2 etiqueta rounded px-2 py-1.5 transition-opacity ${
+                      enCarrito
+                        ? "bg-accent-solid text-accent-ink"
+                        : "bg-ground/80 text-ink backdrop-blur-sm con-mouse:opacity-0 con-mouse:group-hover:opacity-100 con-mouse:focus-visible:opacity-100"
+                    }`}
+                  >
+                    {enCarrito ? "En el carrito" : "Agregar"}
+                  </button>
 
-              <span className="absolute top-2 left-2 etiqueta text-[0.6rem] bg-ground/70 backdrop-blur-sm rounded px-1.5 py-0.5 text-muted">
-                #{photo.code}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+                  <span className="absolute top-2 left-2 etiqueta text-[0.6rem] bg-ground/70 backdrop-blur-sm rounded px-1.5 py-0.5 text-muted">
+                    #{photo.code}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ))}
+      </div>
 
       {quedanPorCargar && (
         <div className="mt-8 text-center">
@@ -201,13 +260,13 @@ export function Gallery({
         <div className="sticky bottom-4 mt-10 flex justify-center">
           <Link
             href="/carrito"
-            className="bg-accent text-accent-ink etiqueta rounded-full px-6 py-3 shadow-lg flex items-center gap-3"
+            className="bg-accent-solid text-accent-ink etiqueta rounded-full px-6 py-3 shadow-lg flex items-center gap-3"
           >
             <span>
               {cart.count} {cart.count === 1 ? "foto" : "fotos"}
             </span>
             <span className="opacity-60">·</span>
-            <span className="tabular-nums">{precio(cart.total)}</span>
+            <span className="cifra">{precio(cart.total)}</span>
             <span className="opacity-60">·</span>
             <span>Ir al carrito</span>
           </Link>

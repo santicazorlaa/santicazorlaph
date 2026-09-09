@@ -109,3 +109,10 @@ model OrderItem {
 
   @@unique([orderId, photoId])
 }
+
+/// Perillas sueltas del sitio, guardadas como texto. Cada ajuste nuevo es una
+/// fila y no una columna, así sumar una opción no obliga a migrar la base.
+model Ajuste {
+  clave String @id
+  valor String
+}

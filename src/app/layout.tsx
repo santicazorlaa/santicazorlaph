@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Inter, Inter_Tight } from "next/font/google";
 
 import { CartProvider } from "@/components/cart-context";
 import { SiteHeader } from "@/components/site-header";
@@ -7,17 +7,20 @@ import { siteName, siteUrl } from "@/lib/env";
 
 import "./globals.css";
 
-const barlow = Barlow({
+const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  variable: "--font-barlow",
+  variable: "--font-inter",
   display: "swap",
 });
 
-const barlowCondensed = Barlow_Condensed({
+/// La versión angosta de Inter. Se usa en títulos y en cifras: aprieta las
+/// letras sin deformarlas, así un marcador o un precio ocupan poco y se leen
+/// como parte de la marca y no como texto de sistema.
+const interTight = Inter_Tight({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
-  variable: "--font-barlow-condensed",
+  variable: "--font-inter-tight",
   display: "swap",
 });
 
@@ -33,7 +36,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${barlow.variable} ${barlowCondensed.variable}`}>
+    <html lang="es" className={`${inter.variable} ${interTight.variable}`}>
       <body className="min-h-dvh flex flex-col">
         <CartProvider>
           <SiteHeader />

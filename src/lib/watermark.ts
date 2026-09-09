@@ -5,6 +5,7 @@ import exifr from "exifr";
 import sharp from "sharp";
 import type { OverlayOptions, Sharp } from "sharp";
 
+import { leerOpacidades } from "./ajustes";
 import { leerMarca } from "./marca";
 import type { Slot } from "./marca-slots";
 
@@ -15,7 +16,20 @@ import { siteName } from "./env";
 const THUMB_WIDTH = 500;
 /// Ancho de la vista ampliada. Se ve el detalle de la jugada, pero no alcanza
 /// para imprimir ni para pasar por una foto comprada.
-const PREVIEW_WIDTH = 1100;
+///
+/// Estuvo en 1100 hasta septiembre de 2026. Se bajó porque hoy cualquiera le
+/// pasa un reescalador con IA a una imagen que baje del sitio: cuanto menos
+/// información real tenga el archivo, menos tiene con qué trabajar. Subir este
+/// número vuelve a regalar detalle; bajarlo mucho más empieza a estorbar la
+/// decisión de compra, que es lo único que la previsualización tiene que
+/// permitir.
+const PREVIEW_WIDTH = 820;
+
+/// Compresión de lo que se muestra. Deliberadamente por debajo de lo que uno
+/// elegiría para lucir la foto: el JPEG agresivo borra justo el grano fino que
+/// un reescalador necesita para inventar detalle creíble.
+const CALIDAD_THUMB = 72;
+const CALIDAD_PREVIEW = 62;
 
 /// Archivos que vienen con el proyecto, en negativo porque la marca se aplica
 /// en blanco sobre la foto. De cada slot se usa el primero que exista.
@@ -164,6 +178,8 @@ async function buildTile(
 }
 
 type WatermarkStyle = {
+  /// Calidad JPEG del archivo que se publica.
+  quality: number;
   /// Intensidad del mosaico.
   tileOpacity: number;
   /// Ancho del isotipo, como fracción del ancho de la foto.
@@ -213,27 +229,41 @@ async function render(original: Buffer, targetWidth: number, style: WatermarkSty
 
   return base
     .composite(layers)
-    .jpeg({ quality: 82, progressive: true, mozjpeg: true })
+    .jpeg({ quality: style.quality, progressive: true, mozjpeg: true })
     .toBuffer();
 }
 
-const ESTILO_THUMB: WatermarkStyle = {
-  tileOpacity: 0.26,
-  tileScale: 0.36,
-  tileGap: 0.14,
-};
+type Opacidades = { mosaico: number; centro: number };
 
-const ESTILO_PREVIEW: WatermarkStyle = {
-  tileOpacity: 0.18,
-  tileScale: 0.2,
-  tileGap: 0.16,
-  center: { opacity: 0.26, scale: 0.52 },
-};
+/// El tamaño y la separación del mosaico están calibrados y no se tocan desde
+/// el panel; lo único que Santi elige es cuánto se ve.
+function estiloThumb(op: Opacidades): WatermarkStyle {
+  return {
+    quality: CALIDAD_THUMB,
+    tileOpacity: op.mosaico,
+    tileScale: 0.36,
+    tileGap: 0.14,
+  };
+}
+
+function estiloPreview(op: Opacidades): WatermarkStyle {
+  return {
+    quality: CALIDAD_PREVIEW,
+    tileOpacity: op.mosaico,
+    tileScale: 0.2,
+    tileGap: 0.16,
+    center: { opacity: op.centro, scale: 0.52 },
+  };
+}
 
 /// Aplica la marca de agua tal cual queda en la vista ampliada. Lo usa el panel
 /// para mostrar cómo se ve antes de procesar un partido entero.
-export function renderPreview(original: Buffer) {
-  return render(original, PREVIEW_WIDTH, ESTILO_PREVIEW);
+///
+/// Acepta opacidades sueltas para que el panel pueda mostrar el resultado de
+/// mover el control antes de guardarlo.
+export async function renderPreview(original: Buffer, opacidades?: Opacidades) {
+  const op = opacidades ?? (await leerOpacidades());
+  return render(original, PREVIEW_WIDTH, estiloPreview(op));
 }
 
 export type ProcessedPhoto = {
@@ -256,9 +286,11 @@ export async function processPhoto(original: Buffer): Promise<ProcessedPhoto> {
   const width = (rotated ? meta.height : meta.width) ?? 0;
   const height = (rotated ? meta.width : meta.height) ?? 0;
 
+  const opacidades = await leerOpacidades();
+
   const [thumb, preview, exif] = await Promise.all([
-    render(original, THUMB_WIDTH, ESTILO_THUMB),
-    render(original, PREVIEW_WIDTH, ESTILO_PREVIEW),
+    render(original, THUMB_WIDTH, estiloThumb(opacidades)),
+    render(original, PREVIEW_WIDTH, estiloPreview(opacidades)),
     // Cada marca guarda el lente en un tag distinto, así que los pedimos todos
     // y nos quedamos con el primero que venga.
     exifr

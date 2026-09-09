@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { MarcaDeAgua } from "@/components/marca-de-agua";
+import { leerOpacidades } from "@/lib/ajustes";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural, precio, slugify } from "@/lib/format";
@@ -17,6 +18,9 @@ const AVISOS: Record<string, string> = {
   restaurada: "Volvimos a usar tu logo del proyecto.",
   "sin-archivo": "No elegiste ningún archivo.",
   "slot-invalido": "No reconocimos qué marca querías cambiar.",
+  opacidad:
+    "Listo: la marca se va a ver con esa intensidad en las fotos que subas de ahora en adelante.",
+  "opacidad-invalida": "Esa intensidad no es un número válido.",
 };
 
 type Props = { searchParams: Promise<{ marca?: string; detalle?: string }> };
@@ -27,6 +31,7 @@ export default async function AdminPage({ searchParams }: Props) {
   const { marca, detalle } = await searchParams;
   const aviso = marca === "error" ? (detalle ?? "No pudimos guardar el archivo") : marca ? (AVISOS[marca] ?? null) : null;
 
+  const opacidades = await leerOpacidades();
   const marcasPropias = await db.watermark.findMany();
   const estadosMarca = SLOTS.map((slot) => {
     const fila = marcasPropias.find((m) => m.slot === slot);
@@ -85,7 +90,7 @@ export default async function AdminPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <MarcaDeAgua estados={estadosMarca} aviso={aviso} />
+      <MarcaDeAgua estados={estadosMarca} aviso={aviso} opacidades={opacidades} />
 
       <section className="border border-line rounded-lg p-5 mb-10">
         <h2 className="etiqueta text-muted mb-4">Nuevo partido</h2>
@@ -133,8 +138,9 @@ export default async function AdminPage({ searchParams }: Props) {
               id="priceArs"
               name="priceArs"
               type="number"
+              inputMode="numeric"
               min={1}
-              step={100}
+              step={1}
               defaultValue={2500}
               className="w-full bg-surface border border-line rounded-md px-3 py-2.5 tabular-nums focus:border-accent outline-none"
             />
@@ -142,7 +148,7 @@ export default async function AdminPage({ searchParams }: Props) {
           <div className="flex items-end">
             <button
               type="submit"
-              className="w-full bg-accent text-accent-ink etiqueta rounded-md py-2.5"
+              className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-2.5"
             >
               Crear partido
             </button>

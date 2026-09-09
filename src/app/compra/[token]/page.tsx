@@ -78,7 +78,7 @@ export default async function CompraPage({ params }: Props) {
         <span>
           {order.items.length} {order.items.length === 1 ? "foto" : "fotos"}
         </span>
-        <span>{precio(order.totalArs)}</span>
+        <span className="cifra">{precio(order.totalArs)}</span>
       </div>
 
       <ul className="grid gap-4 grid-cols-2 sm:grid-cols-3 mt-8">

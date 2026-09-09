@@ -110,13 +110,13 @@ export function CartView() {
             <dt className="text-muted">
               {cart.count} {cart.count === 1 ? "foto" : "fotos"}
             </dt>
-            <dd>{precio(cart.total)}</dd>
+            <dd className="cifra">{precio(cart.total)}</dd>
           </div>
         </dl>
 
         <div className="flex justify-between items-baseline mb-6">
           <span className="etiqueta text-muted">Total</span>
-          <span className="titulo text-3xl tabular-nums">{precio(cart.total)}</span>
+          <span className="cifra text-3xl">{precio(cart.total)}</span>
         </div>
 
         <form onSubmit={pagar} className="space-y-3">
@@ -141,7 +141,7 @@ export function CartView() {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full bg-accent text-accent-ink etiqueta rounded-md py-3.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {enviando ? "Abriendo el pago…" : "Pagar con MercadoPago"}
           </button>

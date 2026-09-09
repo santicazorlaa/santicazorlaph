@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+import {
+  acotarOpacidad,
+  guardarAjuste,
+  OPACIDAD_CENTRO,
+  OPACIDAD_MOSAICO,
+} from "@/lib/ajustes";
 import { isAdmin } from "@/lib/auth";
 import { borrarMarca, guardarMarca, MarcaError } from "@/lib/marca";
 import { esSlot } from "@/lib/marca-slots";
@@ -14,6 +20,27 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const slot = String(form.get("slot") ?? "");
   const accion = String(form.get("accion") ?? "guardar");
+
+  // La intensidad no pertenece a un slot: es un ajuste del sitio, así que se
+  // resuelve antes de exigir que venga un slot válido.
+  if (accion === "opacidad") {
+    const porcentaje = (campo: string) => {
+      const n = Number(form.get(campo));
+      return Number.isFinite(n) ? acotarOpacidad(n / 100) : null;
+    };
+
+    const mosaico = porcentaje("mosaico");
+    const centro = porcentaje("centro");
+    if (mosaico === null || centro === null) {
+      return NextResponse.redirect(`${siteUrl}/admin?marca=opacidad-invalida`, {
+        status: 303,
+      });
+    }
+
+    await guardarAjuste(OPACIDAD_MOSAICO, String(mosaico));
+    await guardarAjuste(OPACIDAD_CENTRO, String(centro));
+    return NextResponse.redirect(`${siteUrl}/admin?marca=opacidad`, { status: 303 });
+  }
 
   if (!esSlot(slot)) {
     return NextResponse.redirect(`${siteUrl}/admin?marca=slot-invalido`, { status: 303 });
