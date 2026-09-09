@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { Gallery } from "@/components/gallery";
 import { db } from "@/lib/db";
+import { leerEscalones } from "@/lib/ajustes";
 import { textoDeEscalones } from "@/lib/descuentos";
 import { fecha, plural, precio } from "@/lib/format";
 import { PHOTOS_PER_PAGE, photoSelect, toPhotoDTO } from "@/lib/photos";
@@ -28,6 +29,8 @@ export default async function EventoPage({ params }: Props) {
   });
   if (!evento) notFound();
 
+  const escalones = await leerEscalones();
+
   const photos = await db.photo.findMany({
     where: { eventId: evento.id },
     orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
@@ -51,7 +54,7 @@ export default async function EventoPage({ params }: Props) {
         {/* Un descuento que el comprador no ve no lo hace agregar una foto más. */}
         <p className="mt-4 text-sm text-muted">
           Llevando varias sale menos:{" "}
-          <span className="text-accent">{textoDeEscalones()}</span>.
+          <span className="text-accent">{textoDeEscalones(escalones)}</span>.
         </p>
       </section>
 

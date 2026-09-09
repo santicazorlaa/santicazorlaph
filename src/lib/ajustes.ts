@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "./db";
+import { leer as leerEscalonesDeTexto, type Escalon } from "./descuentos";
 
 /**
  * Perillas del sitio que Santi puede cambiar desde el panel. Viven en la tabla
@@ -13,6 +14,8 @@ export const OPACIDAD_MOSAICO = "marca.opacidad.mosaico";
 export const OPACIDAD_CENTRO = "marca.opacidad.centro";
 /// Calidad JPEG de la vista ampliada, de 0 a 100.
 export const CALIDAD_PREVIEW = "foto.calidad.preview";
+/// Los escalones del descuento por cantidad, como "3:14,5:20,10:31,15:37".
+export const ESCALONES_DESCUENTO = "descuento.escalones";
 
 type Rango = { min: number; max: number; defecto: number };
 
@@ -71,6 +74,12 @@ export async function guardarAjuste(clave: string, valor: string) {
     update: { valor },
   });
   invalidarAjustes();
+}
+
+/// Los escalones del descuento. Si la fila no está o quedó ilegible, salen los
+/// valores por defecto: el sitio nunca se queda sin una tabla válida.
+export async function leerEscalones(): Promise<Escalon[]> {
+  return leerEscalonesDeTexto((await todos()).get(ESCALONES_DESCUENTO));
 }
 
 /// Todo lo que necesita el procesamiento de una foto, de una sola lectura.

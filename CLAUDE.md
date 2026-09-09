@@ -95,6 +95,14 @@ una vertical se llevaba más del doble de píxeles que una horizontal para ocupa
 menos lugar. Misma idea —que ninguna reciba más que otra para cómo se muestra—,
 distinta forma de mostrar.
 
+**Los escalones del descuento se configuran desde el panel** y se guardan en
+`Ajuste` como `"3:14,5:20,10:31,15:37"`. Los lee el layout una sola vez y se los
+pasa al carrito, porque el carrito vive en todas las pantallas. Si esa fila
+falta o quedó ilegible salen los valores por defecto: el sitio nunca se queda
+sin una tabla válida. Al guardar se normaliza —se ordena, se sacan repetidos y
+se acota el porcentaje a 70— así lo guardado y lo usado para cobrar pasan por el
+mismo filtro.
+
 **El descuento por cantidad se calcula en un solo archivo,
 `src/lib/descuentos.ts`, sin `server-only`.** Lo usa el navegador para mostrar
 cuánto se ahorra y el servidor para cobrar: si fueran dos cuentas distintas, un
@@ -191,9 +199,15 @@ El sitio en producción ya sirve esas fotos, aunque todavía muestre el diseño
 viejo: lo único que cambia al publicar es el diseño y el panel.
 
 En esa misma rama se sumaron después: elegir la portada del partido, editar el
-precio por foto de un partido ya creado, y descuento por cantidad (3 o más 5%,
-6 o más 8%, 10 o más 10%). Santi pidió el 10% como tope; los dos escalones de
-abajo los elegimos nosotros y se cambian en `ESCALONES`.
+precio por foto de un partido ya creado, y descuento por cantidad, configurable
+desde el panel. Los valores por defecto son los que eligió Santi: 3 o más 14%,
+5 o más 20%, 10 o más 31%, 15 o más 37%.
+
+Esos porcentajes salen de pensar en **precios redondos por pack**, no en
+porcentajes. Con la foto a $3.500 dan packs de $9.030, $14.000, $24.150 y
+$33.075. Por eso el control del panel muestra, al lado de cada escalón, cuánto
+sale el pack: es la cifra en la que se piensa. Ojo con esto al cambiar el precio
+por foto —los packs se mueven— y por eso conviene mirar el panel después.
 
 Después, lo que ya venía de antes:
 

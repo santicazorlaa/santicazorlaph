@@ -2,6 +2,7 @@ import "server-only";
 
 import { customAlphabet } from "nanoid";
 
+import { leerEscalones } from "./ajustes";
 import { db } from "./db";
 import { calcular, repartir } from "./descuentos";
 import { enviarMailDeCompra } from "./email";
@@ -57,7 +58,7 @@ export async function createOrder(photoIds: string[], email: string) {
   // El descuento por cantidad se calcula acá, con los precios de la base. Lo
   // que el navegador haya mostrado no interviene.
   const subtotal = photos.reduce((sum, p) => sum + p.event.priceArs, 0);
-  const { total: totalArs } = calcular(subtotal, photos.length);
+  const { total: totalArs } = calcular(subtotal, photos.length, await leerEscalones());
 
   // A MercadoPago se le manda una línea por foto, así que el descuento hay que
   // repartirlo entre esas líneas: si no, cobraría el precio de lista.

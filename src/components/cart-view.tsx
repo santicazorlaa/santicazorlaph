@@ -12,7 +12,7 @@ export function CartView() {
 
   // Cuántas fotos le faltan para el próximo descuento. Decírselo es lo que
   // convierte el descuento en un motivo para agregar una más.
-  const siguiente = proximoEscalon(cart.count);
+  const siguiente = proximoEscalon(cart.count, cart.escalones);
   const faltan =
     siguiente && cart.count > 0
       ? { escalon: siguiente, cuantas: siguiente.desde - cart.count }

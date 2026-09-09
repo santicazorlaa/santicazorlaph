@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DescuentosPanel } from "@/components/descuentos-panel";
 import { MarcaDeAgua } from "@/components/marca-de-agua";
-import { leerAjustesDeFoto } from "@/lib/ajustes";
+import { leerAjustesDeFoto, leerEscalones } from "@/lib/ajustes";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural, precio, slugify } from "@/lib/format";
@@ -23,15 +24,29 @@ const AVISOS: Record<string, string> = {
   "opacidad-invalida": "Alguno de esos valores no es un número válido.",
 };
 
-type Props = { searchParams: Promise<{ marca?: string; detalle?: string }> };
+const AVISOS_DESCUENTOS: Record<string, string> = {
+  guardados: "Listo: los descuentos nuevos rigen desde ahora, para toda compra.",
+  vacio: "No quedó ningún escalón válido, así que no se guardó nada.",
+};
+
+type Props = {
+  searchParams: Promise<{ marca?: string; detalle?: string; descuentos?: string }>;
+};
 
 export default async function AdminPage({ searchParams }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
 
-  const { marca, detalle } = await searchParams;
+  const { marca, detalle, descuentos } = await searchParams;
   const aviso = marca === "error" ? (detalle ?? "No pudimos guardar el archivo") : marca ? (AVISOS[marca] ?? null) : null;
 
   const ajustesDeFoto = await leerAjustesDeFoto();
+  const escalones = await leerEscalones();
+
+  // El ejemplo de precios usa un partido real; si todavía no hay ninguno, el
+  // valor con el que se crean.
+  const precioReferencia =
+    (await db.event.findFirst({ orderBy: { date: "desc" }, select: { priceArs: true } }))
+      ?.priceArs ?? 2500;
   const marcasPropias = await db.watermark.findMany();
   const estadosMarca = SLOTS.map((slot) => {
     const fila = marcasPropias.find((m) => m.slot === slot);
@@ -91,6 +106,12 @@ export default async function AdminPage({ searchParams }: Props) {
       </div>
 
       <MarcaDeAgua estados={estadosMarca} aviso={aviso} ajustes={ajustesDeFoto} />
+
+      <DescuentosPanel
+        escalones={escalones}
+        precioReferencia={precioReferencia}
+        aviso={descuentos ? (AVISOS_DESCUENTOS[descuentos] ?? null) : null}
+      />
 
       <section className="border border-line rounded-lg p-5 mb-10">
         <h2 className="etiqueta text-muted mb-4">Nuevo partido</h2>

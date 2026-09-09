@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Inter_Tight } from "next/font/google";
 
 import { CartProvider } from "@/components/cart-context";
+import { leerEscalones } from "@/lib/ajustes";
 import { SiteHeader } from "@/components/site-header";
 import { siteName, siteUrl } from "@/lib/env";
 
@@ -34,11 +35,14 @@ export const metadata: Metadata = {
     "Fotografía deportiva. Encontrá las fotos de tu partido y llevátelas en alta resolución, sin marca de agua.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Se leen acá, una sola vez, porque el carrito vive en todas las pantallas.
+  const escalones = await leerEscalones();
+
   return (
     <html lang="es" className={`${inter.variable} ${interTight.variable}`}>
       <body className="min-h-dvh flex flex-col">
-        <CartProvider>
+        <CartProvider escalones={escalones}>
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <footer className="border-t border-line mt-24">

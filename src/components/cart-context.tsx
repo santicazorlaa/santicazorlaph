@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-import { calcular, type Cuenta } from "@/lib/descuentos";
+import { calcular, type Cuenta, type Escalon } from "@/lib/descuentos";
 
 const STORAGE_KEY = "sc_carrito";
 
@@ -32,6 +32,8 @@ type CartValue = {
   total: number;
   /// El detalle de esa cuenta, para poder mostrar cuánto se ahorró.
   cuenta: Cuenta;
+  /// La tabla de descuentos vigente, para poder invitar al próximo escalón.
+  escalones: Escalon[];
   has: (photoId: string) => boolean;
   add: (item: CartItem) => void;
   remove: (photoId: string) => void;
@@ -42,7 +44,15 @@ type CartValue = {
 
 const Ctx = createContext<CartValue | null>(null);
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+/// Los escalones llegan desde el servidor, que es donde están configurados. El
+/// navegador los usa sólo para mostrar; lo que se cobra se recalcula al pagar.
+export function CartProvider({
+  escalones,
+  children,
+}: {
+  escalones: Escalon[];
+  children: React.ReactNode;
+}) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -91,6 +101,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const cuenta = calcular(
       items.reduce((s, i) => s + i.priceArs, 0),
       items.length,
+      escalones,
     );
     return {
       items,
@@ -98,6 +109,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       subtotal: cuenta.subtotal,
       total: cuenta.total,
       cuenta,
+      escalones,
       has: (photoId: string) => items.some((i) => i.photoId === photoId),
       add,
       remove,
@@ -105,7 +117,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       clear,
       ready,
     };
-  }, [items, add, remove, toggle, clear, ready]);
+  }, [items, escalones, add, remove, toggle, clear, ready]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
