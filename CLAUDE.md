@@ -87,6 +87,14 @@ el mouse por encima": lo que se revele con hover y no lleve esa variante queda
 escondido para siempre en el celular. Ya pasó una vez —el botón "Agregar" de la
 galería no aparecía nunca en el teléfono— y por eso existe la variante.
 
+**La miniatura se mide por el ancho y la foto grande por el lado más largo.**
+No es un descuido: la grilla le da a cada foto una columna del mismo ancho, así
+que ahí igualar el ancho es lo que las deja parejas de nitidez; el lightbox, en
+cambio, muestra la foto entera dentro de la pantalla, y midiendo por el ancho
+una vertical se llevaba más del doble de píxeles que una horizontal para ocupar
+menos lugar. Misma idea —que ninguna reciba más que otra para cómo se muestra—,
+distinta forma de mostrar.
+
 **La grilla de fotos reparte siempre desde la primera.** Cada foto va a la
 columna más corta mirando sólo las anteriores, así al traer más fotos las que ya
 estaban caen en el mismo lugar. Si se dejara balancear las columnas al navegador
@@ -157,17 +165,17 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 ## Qué falta
 
-Para cerrar lo de la rama `mejoras-estetica-y-marca`:
+Para cerrar lo de la rama `mejoras-estetica-y-marca` queda **publicarla**. Todo
+lo demás de esa tanda está hecho y verificado:
 
-1. **Mirar los controles de intensidad en el panel**, que quedaron sin revisar a
-   ojo (hay que entrar con contraseña). Guardar y leer ya se verificó por
-   separado y funciona, incluido el acotado de valores fuera de rango.
-2. **Publicar la rama.**
+- La migración de `Ajuste` está aplicada.
+- Santi eligió mosaico 50, marca del centro 50 y calidad 40, y los guardó desde
+  el panel (o sea que los controles funcionan de punta a punta).
+- Las 74 fotos que estaban online se rehicieron con esos valores. El peso
+  publicado quedó en 5 MB contra los 14 MB originales.
 
-Ya hecho de esa tanda: la migración de `Ajuste` está aplicada, y las 74 fotos
-que estaban online se rehicieron a 820 px y calidad 62 (14 MB → 6 MB de peso
-publicado). El sitio en producción sigue andando con las fotos nuevas aunque
-todavía muestre el diseño viejo.
+El sitio en producción ya sirve esas fotos, aunque todavía muestre el diseño
+viejo: lo único que cambia al publicar es el diseño y el panel.
 
 Después, lo que ya venía de antes:
 
