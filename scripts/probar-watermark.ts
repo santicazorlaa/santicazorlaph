@@ -1,6 +1,6 @@
 /**
- * Genera un logo provisorio y una foto sintética, y corre el procesamiento real
- * para ver cómo queda la marca de agua. Se borra cuando tengamos el logo real.
+ * Renderiza una foto sintética con la marca de agua real para revisar cómo
+ * queda antes de procesar un partido entero.
  *
  *   npx tsx scripts/probar-watermark.ts
  */
@@ -11,19 +11,6 @@ import sharp from "sharp";
 
 const root = process.cwd();
 const out = path.join(root, ".data", "prueba");
-
-async function logoProvisorio() {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="300">
-    <text x="450" y="150" text-anchor="middle" font-family="Arial Black, Arial, sans-serif"
-          font-size="190" font-weight="900" fill="#ffffff">SC</text>
-    <text x="450" y="230" text-anchor="middle" font-family="Arial, sans-serif"
-          font-size="46" letter-spacing="9" fill="#ffffff">SANTI CAZORLA</text>
-  </svg>`;
-  const png = await sharp(Buffer.from(svg)).png().toBuffer();
-  await mkdir(path.join(root, "assets"), { recursive: true });
-  await writeFile(path.join(root, "assets", "watermark.png"), png);
-  return png;
-}
 
 /** Una cancha sintética con zonas claras y oscuras, para ver si el watermark
  *  se lee sobre las dos. */
@@ -54,9 +41,6 @@ async function fotoDePrueba() {
 
 async function main() {
   await mkdir(out, { recursive: true });
-
-  await logoProvisorio();
-  console.log("logo provisorio -> assets/watermark.png");
 
   const original = await fotoDePrueba();
   await writeFile(path.join(out, "original.jpg"), original);

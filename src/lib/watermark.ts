@@ -14,18 +14,47 @@ const THUMB_WIDTH = 500;
 /// para imprimir ni para pasar por una foto comprada.
 const PREVIEW_WIDTH = 1100;
 
-const LOGO_PATH = path.join(process.cwd(), "assets", "watermark.png");
+/// Se usa el primero que exista. El isotipo en negativo (blanco sobre
+/// transparente) es el que corresponde: la marca se aplica en blanco sobre la
+/// foto, y al ser vectorial se rasteriza nítido a cualquier tamaño.
+const LOGO_CANDIDATES = ["watermark.svg", "isotipo-negativo.svg", "watermark.png"];
 
-let logoCache: Buffer | null | undefined;
+type Logo = { data: Buffer; vector: boolean; naturalWidth: number };
 
-async function loadLogo(): Promise<Buffer | null> {
+let logoCache: Logo | null | undefined;
+
+async function loadLogo(): Promise<Logo | null> {
   if (logoCache !== undefined) return logoCache;
-  try {
-    logoCache = await readFile(LOGO_PATH);
-  } catch {
-    logoCache = null;
+
+  for (const nombre of LOGO_CANDIDATES) {
+    try {
+      const data = await readFile(path.join(process.cwd(), "assets", nombre));
+      const { width } = await sharp(data).metadata();
+      logoCache = {
+        data,
+        vector: nombre.endsWith(".svg"),
+        naturalWidth: width || 1000,
+      };
+      return logoCache;
+    } catch {
+      // No está ese archivo: probamos el siguiente.
+    }
   }
-  return logoCache;
+
+  logoCache = null;
+  return null;
+}
+
+/// El logo al ancho pedido. Un SVG se rasteriza al doble y se baja, que sale
+/// más limpio que pedirle a la librería el tamaño exacto.
+function renderLogo(logo: Logo, width: number) {
+  if (!logo.vector) return sharp(logo.data).resize({ width });
+
+  const density = Math.min(
+    2400,
+    Math.max(72, Math.round((72 * width * 2) / logo.naturalWidth)),
+  );
+  return sharp(logo.data, { density }).resize({ width });
 }
 
 /// Baja la opacidad de un PNG multiplicando su canal alfa.
@@ -50,7 +79,7 @@ async function buildMark(markWidth: number, opacity: number) {
 
   let solid: Buffer;
   if (logo) {
-    solid = await sharp(logo).resize({ width: markWidth }).png().toBuffer();
+    solid = await renderLogo(logo, markWidth).png().toBuffer();
   } else {
     // Sin logo cargado todavía: marca de texto, sólo para desarrollo.
     const fontSize = Math.round(markWidth / 7);
@@ -89,6 +118,7 @@ async function buildTile(
   imageHeight: number,
   opacity: number,
   scale: number,
+  gapRatio: number,
 ) {
   const markWidth = Math.round(imageWidth * scale);
   const mark = await buildMark(markWidth, opacity);
@@ -100,7 +130,7 @@ async function buildTile(
   // El aire entre repeticiones sale de extend. Ojo: sharp aplica resize antes
   // que extend sin importar el orden de las llamadas, así que acá no se puede
   // encadenar un resize para ajustar el tamaño final.
-  const gap = Math.round(markWidth * 0.07);
+  const gap = Math.round(markWidth * gapRatio);
   const tile = await sharp(rotated)
     .extend({ top: gap, bottom: gap, left: gap, right: gap, background: TRANSPARENT })
     .png()
@@ -117,11 +147,14 @@ async function buildTile(
 }
 
 type WatermarkStyle = {
-  /// Intensidad del mosaico de fondo.
+  /// Intensidad del mosaico.
   tileOpacity: number;
-  /// Ancho del logo del mosaico, como fracción del ancho de la foto.
+  /// Ancho del isotipo, como fracción del ancho de la foto.
   tileScale: number;
-  /// Marca grande al centro. En las miniaturas no va: no hay lugar.
+  /// Aire entre repeticiones, como fracción del ancho del isotipo.
+  tileGap: number;
+  /// Marca grande al centro. Queda bien con un logotipo con texto; con un
+  /// isotipo solo, tapa la jugada sin sumar identidad.
   center?: { opacity: number; scale: number };
 };
 
@@ -137,7 +170,13 @@ async function render(original: Buffer, targetWidth: number, style: WatermarkSty
 
   const layers: OverlayOptions[] = [
     {
-      input: await buildTile(width, height, style.tileOpacity, style.tileScale),
+      input: await buildTile(
+        width,
+        height,
+        style.tileOpacity,
+        style.tileScale,
+        style.tileGap,
+      ),
       tile: true,
       blend: "over",
     },
@@ -182,11 +221,15 @@ export async function processPhoto(original: Buffer): Promise<ProcessedPhoto> {
   const height = (rotated ? meta.width : meta.height) ?? 0;
 
   const [thumb, preview, exif] = await Promise.all([
-    render(original, THUMB_WIDTH, { tileOpacity: 0.3, tileScale: 0.5 }),
+    render(original, THUMB_WIDTH, {
+      tileOpacity: 0.26,
+      tileScale: 0.36,
+      tileGap: 0.14,
+    }),
     render(original, PREVIEW_WIDTH, {
-      tileOpacity: 0.28,
-      tileScale: 0.34,
-      center: { opacity: 0.34, scale: 0.62 },
+      tileOpacity: 0.22,
+      tileScale: 0.2,
+      tileGap: 0.16,
     }),
     // Cada marca guarda el lente en un tag distinto, así que los pedimos todos
     // y nos quedamos con el primero que venga.

@@ -65,17 +65,26 @@ export async function createOrder(photoIds: string[], email: string) {
     },
   });
 
-  const { preferenceId, checkoutUrl } = await createPreference({
-    orderId: order.id,
-    orderToken: order.token,
-    email,
-    items: photos.map((p) => ({
-      id: p.id,
-      title: `Foto ${p.code} · ${p.event.title}`,
-      quantity: 1,
-      unitPrice: p.event.priceArs,
-    })),
-  });
+  // La orden ya existe, así que si MercadoPago no nos da el link hay que
+  // borrarla: si no, queda una orden PENDING que nadie va a pagar nunca.
+  let preferenceId: string;
+  let checkoutUrl: string;
+  try {
+    ({ preferenceId, checkoutUrl } = await createPreference({
+      orderId: order.id,
+      orderToken: order.token,
+      email,
+      items: photos.map((p) => ({
+        id: p.id,
+        title: `Foto ${p.code} · ${p.event.title}`,
+        quantity: 1,
+        unitPrice: p.event.priceArs,
+      })),
+    }));
+  } catch (error) {
+    await db.order.delete({ where: { id: order.id } }).catch(() => {});
+    throw error;
+  }
 
   await db.order.update({
     where: { id: order.id },

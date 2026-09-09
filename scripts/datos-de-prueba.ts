@@ -55,6 +55,12 @@ async function main() {
   const title = "CAT vs Lastenia";
   const slug = slugify(title);
 
+  // El esquema no deja borrar una foto que alguien compró, que es lo correcto
+  // en producción. Acá, en desarrollo, primero limpiamos las órdenes de prueba
+  // que apuntan a este partido.
+  await db.order.deleteMany({
+    where: { items: { some: { photo: { event: { slug } } } } },
+  });
   await db.event.deleteMany({ where: { slug } });
 
   const evento = await db.event.create({
