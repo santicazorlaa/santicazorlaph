@@ -14,34 +14,35 @@ const THUMB_WIDTH = 500;
 /// para imprimir ni para pasar por una foto comprada.
 const PREVIEW_WIDTH = 1100;
 
-/// Se usa el primero que exista. El isotipo en negativo (blanco sobre
-/// transparente) es el que corresponde: la marca se aplica en blanco sobre la
-/// foto, y al ser vectorial se rasteriza nítido a cualquier tamaño.
-const LOGO_CANDIDATES = ["watermark.svg", "isotipo-negativo.svg", "watermark.png"];
+/// Siempre las versiones en negativo: la marca se aplica en blanco sobre la
+/// foto. De cada una se usa el primer archivo que exista.
+const MARCAS = {
+  isotipo: ["watermark.svg", "isotipo-negativo.svg", "watermark.png"],
+  logotipo: ["logotipo-negativo.svg"],
+} as const;
 
+type Marca = keyof typeof MARCAS;
 type Logo = { data: Buffer; vector: boolean; naturalWidth: number };
 
-let logoCache: Logo | null | undefined;
+const logoCache = new Map<Marca, Logo | null>();
 
-async function loadLogo(): Promise<Logo | null> {
-  if (logoCache !== undefined) return logoCache;
+async function loadLogo(marca: Marca): Promise<Logo | null> {
+  const cacheado = logoCache.get(marca);
+  if (cacheado !== undefined) return cacheado;
 
-  for (const nombre of LOGO_CANDIDATES) {
+  for (const nombre of MARCAS[marca]) {
     try {
       const data = await readFile(path.join(process.cwd(), "assets", nombre));
       const { width } = await sharp(data).metadata();
-      logoCache = {
-        data,
-        vector: nombre.endsWith(".svg"),
-        naturalWidth: width || 1000,
-      };
-      return logoCache;
+      const logo = { data, vector: nombre.endsWith(".svg"), naturalWidth: width || 1000 };
+      logoCache.set(marca, logo);
+      return logo;
     } catch {
       // No está ese archivo: probamos el siguiente.
     }
   }
 
-  logoCache = null;
+  logoCache.set(marca, null);
   return null;
 }
 
@@ -74,8 +75,8 @@ const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 /// El logo al ancho pedido, en blanco y con una sombra oscura difusa detrás.
 /// La sombra es lo que hace que la marca se lea tanto sobre un cielo quemado
 /// como sobre la sombra de la tribuna.
-async function buildMark(markWidth: number, opacity: number) {
-  const logo = await loadLogo();
+async function buildMark(marca: Marca, markWidth: number, opacity: number) {
+  const logo = await loadLogo(marca);
 
   let solid: Buffer;
   if (logo) {
@@ -121,7 +122,7 @@ async function buildTile(
   gapRatio: number,
 ) {
   const markWidth = Math.round(imageWidth * scale);
-  const mark = await buildMark(markWidth, opacity);
+  const mark = await buildMark("isotipo", markWidth, opacity);
 
   const rotated = await sharp(mark)
     .rotate(-30, { background: TRANSPARENT })
@@ -153,8 +154,8 @@ type WatermarkStyle = {
   tileScale: number;
   /// Aire entre repeticiones, como fracción del ancho del isotipo.
   tileGap: number;
-  /// Marca grande al centro. Queda bien con un logotipo con texto; con un
-  /// isotipo solo, tapa la jugada sin sumar identidad.
+  /// Marca grande al centro. Va el logotipo con el nombre: el mosaico ya
+  /// repite el isotipo, así que acá lo que suma es que se lea de quién es.
   center?: { opacity: number; scale: number };
 };
 
@@ -188,7 +189,7 @@ async function render(original: Buffer, targetWidth: number, style: WatermarkSty
       Math.round(width * 0.9),
     );
     layers.push({
-      input: await buildMark(centerWidth, style.center.opacity),
+      input: await buildMark("logotipo", centerWidth, style.center.opacity),
       gravity: "center",
       blend: "over",
     });
@@ -227,9 +228,10 @@ export async function processPhoto(original: Buffer): Promise<ProcessedPhoto> {
       tileGap: 0.14,
     }),
     render(original, PREVIEW_WIDTH, {
-      tileOpacity: 0.22,
+      tileOpacity: 0.18,
       tileScale: 0.2,
       tileGap: 0.16,
+      center: { opacity: 0.26, scale: 0.52 },
     }),
     // Cada marca guarda el lente en un tag distinto, así que los pedimos todos
     // y nos quedamos con el primero que venga.

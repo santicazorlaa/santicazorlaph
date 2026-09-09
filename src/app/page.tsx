@@ -19,7 +19,6 @@ export default async function Home() {
   return (
     <div className="mx-auto max-w-6xl px-5">
       <section className="py-16 sm:py-24 border-b border-line">
-        <p className="etiqueta text-accent mb-5">Fotografía deportiva</p>
         <h1 className="titulo text-5xl sm:text-7xl max-w-3xl text-balance">
           Encontrá las fotos de tu partido
         </h1>

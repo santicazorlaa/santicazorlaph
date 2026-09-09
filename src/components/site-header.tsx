@@ -10,11 +10,13 @@ export function SiteHeader() {
   return (
     <header className="border-b border-line sticky top-0 z-30 bg-ground/90 backdrop-blur">
       <div className="mx-auto max-w-6xl px-5 h-16 flex items-center justify-between gap-6">
-        <Link href="/" className="titulo text-xl tracking-tight hover:text-accent transition-colors">
-          Santi Cazorla
-          <span className="block etiqueta text-[0.6rem] text-muted tracking-[0.3em] mt-0.5">
-            Photography
-          </span>
+        <Link href="/" className="shrink-0 opacity-95 hover:opacity-100 transition-opacity">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.svg"
+            alt="Santi Cazorla · Fotografía Deportiva"
+            className="h-8 sm:h-10 w-auto"
+          />
         </Link>
 
         <nav className="flex items-center gap-6">
