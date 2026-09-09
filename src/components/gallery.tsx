@@ -275,16 +275,13 @@ export function Gallery({
 
       {openIndex !== null && photos[openIndex] && (
         <Lightbox
-          photo={photos[openIndex]}
+          photos={photos}
+          index={openIndex}
           priceArs={priceArs}
           inCart={cart.has(photos[openIndex].id)}
           onToggle={() => cart.toggle(toItem(photos[openIndex]))}
           onClose={() => setOpenIndex(null)}
-          onPrev={openIndex > 0 ? () => setOpenIndex(openIndex - 1) : undefined}
-          onNext={
-            openIndex < photos.length - 1 ? () => setOpenIndex(openIndex + 1) : undefined
-          }
-          position={`${openIndex + 1} / ${photos.length}`}
+          onIndex={setOpenIndex}
         />
       )}
     </section>
