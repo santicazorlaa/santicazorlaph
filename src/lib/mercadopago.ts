@@ -17,6 +17,11 @@ export type PreferenceItem = {
   unitPrice: number;
 };
 
+/// MercadoPago no acepta localhost como dirección de retorno, y con una URL que
+/// no le sirve rechaza toda la preferencia. En desarrollo el comprador vuelve
+/// con el botón de MercadoPago en vez de volver solo.
+const esPublico = !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/.test(siteUrl);
+
 export async function createPreference(opts: {
   orderId: string;
   orderToken: string;
@@ -38,13 +43,17 @@ export async function createPreference(opts: {
       // La orden queda atada a la preferencia por acá. Es lo que usamos para
       // reencontrarla cuando entra el webhook.
       external_reference: opts.orderId,
-      back_urls: {
-        success: `${siteUrl}/compra/${opts.orderToken}`,
-        pending: `${siteUrl}/compra/${opts.orderToken}`,
-        failure: `${siteUrl}/carrito?pago=rechazado`,
-      },
-      auto_return: "approved",
-      notification_url: `${siteUrl}/api/webhooks/mercadopago`,
+      ...(esPublico
+        ? {
+            back_urls: {
+              success: `${siteUrl}/compra/${opts.orderToken}`,
+              pending: `${siteUrl}/compra/${opts.orderToken}`,
+              failure: `${siteUrl}/carrito?pago=rechazado`,
+            },
+            auto_return: "approved" as const,
+            notification_url: `${siteUrl}/api/webhooks/mercadopago`,
+          }
+        : {}),
       statement_descriptor: "SANTICAZORLAPH",
     },
   });
