@@ -165,6 +165,10 @@ npx tsx --conditions=react-server --env-file=.env scripts/rehacer-previsualizaci
 
 Sin `--aplicar` es un ensayo y no escribe nada. Acepta `--partido=<slug>`.
 
+`scripts/cambiar-direccion.ts` cambia la dirección de un partido. Sin argumentos
+lista las actuales. La dirección vieja deja de responder en el acto, así que no
+se usa con un partido ya compartido.
+
 `scripts/resetear-ventas-de-prueba.ts` borra **todas** las órdenes, para dejar
 el contador en cero antes de vender de verdad. Sirve además para desbloquear el
 borrado de un partido de prueba: una foto comprada no se puede borrar, y por eso
@@ -212,9 +216,7 @@ Ya está todo publicado. Lo que queda:
 2. **Por qué se crearon seis partidos duplicados.** Ya se borraron, pero la
    causa sigue ahí: lo más probable es que el formulario de "Nuevo partido" no
    dé señal de que ya se envió y se pueda apretar dos veces.
-3. **La dirección del partido real quedó fea**, `/e/bayern-vs-drink-7`, herencia
-   de esos duplicados. Cambiarla rompería los links ya compartidos por WhatsApp.
-4. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
+3. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
    render (`filtrando` en `src/components/gallery.tsx`). Es viejo, no rompe
    nada, pero conviene limpiarlo.
 
@@ -225,7 +227,7 @@ $33.075. Por eso el panel muestra, al lado de cada escalón, cuánto sale el pac
 es la cifra en la que se piensa. Al cambiar el precio por foto los packs se
 mueven, así que conviene pasar por el panel después.
 
-5. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
+4. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
    cuenta, aviso al jugador cuando se suben sus fotos, y la tarjeta de "pack
    completo" que quedó afuera del documento de ofertas porque depende de esos
    filtros.
