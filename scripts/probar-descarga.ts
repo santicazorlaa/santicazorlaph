@@ -58,23 +58,51 @@ async function main() {
     `${otraFoto.status}`,
   ]);
 
-  // El link firmado tiene que caducar.
+  // Los dos chequeos que siguen tienen que andar igual con R2 que con el disco
+  // local, y cada uno firma distinto: R2 usa X-Amz-Signature y el disco usa sig.
   const url: string = pagada.body.url ?? "";
-  const vencido = url.replace(/expires=\d+/, `expires=${Date.now() - 1000}`);
-  const resVencido = await fetch(vencido);
+
+  const firmado = await pedirDescarga(orden.token, comprada.id);
+  const urlValida: string = firmado.body.url ?? url;
+  const res = await fetch(urlValida);
+  resultados.push(["el link recien emitido sirve", res.status === 200, `${res.status}`]);
+
+  const manipulada = new URL(urlValida);
+  const campoFirma = ["X-Amz-Signature", "sig"].find((c) =>
+    manipulada.searchParams.has(c),
+  );
+  if (!campoFirma) {
+    resultados.push(["encontro la firma en el link", false, urlValida.slice(0, 80)]);
+  } else {
+    // Cambiamos un solo caracter de la firma: tiene que alcanzar para invalidarla.
+    const original = manipulada.searchParams.get(campoFirma)!;
+    manipulada.searchParams.set(
+      campoFirma,
+      (original[0] === "a" ? "b" : "a") + original.slice(1),
+    );
+    const resManipulado = await fetch(manipulada.toString());
+    const cuerpo = await resManipulado.arrayBuffer();
+    resultados.push([
+      `firma manipulada no sirve (${campoFirma})`,
+      !resManipulado.ok || cuerpo.byteLength === 0,
+      `${resManipulado.status}`,
+    ]);
+  }
+
+  // Para el vencimiento pedimos un link que dure un segundo y esperamos.
+  const { signedDownloadUrl } = await import("../src/lib/storage");
+  const fotoComprada = await db.photo.findUnique({
+    where: { id: comprada.id },
+    select: { originalKey: true },
+  });
+  const urlCorta = await signedDownloadUrl(fotoComprada!.originalKey, "prueba.jpg", 1);
+  await new Promise((r) => setTimeout(r, 2500));
+  const resVencido = await fetch(urlCorta);
+  const cuerpoVencido = await resVencido.arrayBuffer();
   resultados.push([
     "link vencido no sirve",
-    resVencido.status === 403,
+    !resVencido.ok || cuerpoVencido.byteLength === 0,
     `${resVencido.status}`,
-  ]);
-
-  // Y no tiene que aceptar una firma cambiada a mano.
-  const manipulado = url.replace(/key=[^&]+/, "key=originales%2Fcualquier%2Fcosa.jpg");
-  const resManipulado = await fetch(manipulado);
-  resultados.push([
-    "firma manipulada no sirve",
-    resManipulado.status === 403,
-    `${resManipulado.status}`,
   ]);
 
   await db.order.delete({ where: { id: orden.id } });

@@ -5,9 +5,6 @@
  *
  *   npx tsx --conditions=react-server scripts/probar-subida.ts
  */
-import { stat } from "node:fs/promises";
-import path from "node:path";
-
 import exifr from "exifr";
 import sharp from "sharp";
 
@@ -67,7 +64,7 @@ async function main() {
   const photo = await db.photo.findUnique({ where: { id: data.photo.id } });
   if (!photo) throw new Error("No quedó guardada en la base");
 
-  const checks: [string, boolean, string][] = [
+  const checks: [string, boolean, string?][] = [
     ["se agregó a la base", (await db.photo.count({ where: { eventId: evento.id } })) === antes + 1, ""],
     ["leyó la cámara del EXIF", photo.camera === "Canon EOS R6 Mark II", photo.camera ?? "null"],
     ["guardó las medidas", photo.width === 2400 && photo.height === 1600, `${photo.width}x${photo.height}`],
@@ -75,36 +72,37 @@ async function main() {
     ["el preview va al público", photo.previewKey.startsWith("preview/"), photo.previewKey],
   ];
 
-  const raiz = path.join(process.cwd(), ".data", "storage");
-  const existe = async (p: string) => stat(p).then(() => true).catch(() => false);
+  // Se consulta el storage por su interfaz, así estos chequeos valen igual con
+  // R2 que con el disco local.
+  const { getObject } = await import("../src/lib/storage");
+  const traer = async (bucket: "public" | "private", key: string) =>
+    getObject(bucket, key).catch(() => null);
+
+  const original = await traer("private", photo.originalKey);
+  checks.push(["el original está en el bucket privado", original !== null]);
 
   checks.push([
-    "el original está en private/",
-    await existe(path.join(raiz, "private", photo.originalKey)),
-    "",
-  ]);
-  checks.push([
-    "el original NO está en public/",
-    !(await existe(path.join(raiz, "public", photo.originalKey))),
-    "",
+    "el original NO está en el bucket público",
+    (await traer("public", photo.originalKey)) === null,
   ]);
 
-  // El preview tiene que pesar bastante menos que el original.
-  const original = await stat(path.join(raiz, "private", photo.originalKey));
-  const preview = await stat(path.join(raiz, "public", photo.previewKey));
-  checks.push([
-    "el preview pesa menos que el original",
-    preview.size < original.size,
-    `${Math.round(preview.size / 1024)}KB vs ${Math.round(original.size / 1024)}KB`,
-  ]);
+  const preview = await traer("public", photo.previewKey);
+  checks.push(["el preview está en el bucket público", preview !== null]);
 
-  // Y tiene que estar reducido de tamaño.
-  const dimPreview = await sharp(path.join(raiz, "public", photo.previewKey)).metadata();
-  checks.push([
-    "el preview está reducido",
-    (dimPreview.width ?? 0) <= 1100 && (dimPreview.width ?? 0) < photo.width,
-    `${dimPreview.width}px`,
-  ]);
+  if (original && preview) {
+    checks.push([
+      "el preview pesa menos que el original",
+      preview.byteLength < original.byteLength,
+      `${Math.round(preview.byteLength / 1024)}KB vs ${Math.round(original.byteLength / 1024)}KB`,
+    ]);
+
+    const dimPreview = await sharp(preview).metadata();
+    checks.push([
+      "el preview está reducido",
+      (dimPreview.width ?? 0) <= 1100 && (dimPreview.width ?? 0) < photo.width,
+      `${dimPreview.width}px`,
+    ]);
+  }
 
   // El lente y la fecha de captura viven en el bloque ExifIFD. sharp no puede
   // escribir esos dos tags, así que con una foto sintética no se pueden probar
