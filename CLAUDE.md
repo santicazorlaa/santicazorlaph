@@ -165,6 +165,11 @@ npx tsx --conditions=react-server --env-file=.env scripts/rehacer-previsualizaci
 
 Sin `--aplicar` es un ensayo y no escribe nada. Acepta `--partido=<slug>`.
 
+`scripts/resetear-ventas-de-prueba.ts` borra **todas** las órdenes, para dejar
+el contador en cero antes de vender de verdad. Sirve además para desbloquear el
+borrado de un partido de prueba: una foto comprada no se puede borrar, y por eso
+tampoco su partido. No correrlo si ya hay ventas reales.
+
 `revision-general.ts` verifica todo el sistema en producción de una: sitio, CDN,
 que los originales no se filtren, avisos firmados y sin firmar, panel protegido,
 descarga de una compra pagada, y en qué cuenta de MercadoPago está cobrando.
@@ -229,5 +234,8 @@ Después, lo que ya venía de antes:
 6. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
    render (`filtrando` en `src/components/gallery.tsx`). Es viejo, no rompe
    nada, pero conviene limpiarlo.
-7. Ideas para más adelante: búsqueda por selfie, "mis compras" con cuenta,
+7. **Las direcciones de los partidos no se pueden editar.** El partido real
+   quedó en `/e/bayern-vs-drink-7` por los duplicados, y borrarlos no lo
+   arregla. Cambiarlo rompería los links ya compartidos por WhatsApp.
+8. Ideas para más adelante: búsqueda por selfie, "mis compras" con cuenta,
    descuento por cantidad, aviso al jugador cuando se suben sus fotos.

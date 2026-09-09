@@ -40,6 +40,10 @@ export function DescuentosPanel({
   aviso: string | null;
 }) {
   const [filas, setFilas] = useState<Fila[]>(() => aFilas(escalones));
+  // El precio con el que se muestran los packs. Se puede cambiar sin guardar
+  // nada: sirve para probar cómo quedarían con el precio de otro partido.
+  const [referencia, setReferencia] = useState(String(precioReferencia));
+  const precioEjemplo = Number(referencia) >= 1 ? Math.round(Number(referencia)) : 0;
 
   const cambiar = (i: number, campo: keyof Fila, valor: string) => {
     setFilas((prev) => prev.map((f, j) => (i === j ? { ...f, [campo]: valor } : f)));
@@ -57,11 +61,26 @@ export function DescuentosPanel({
   return (
     <section className="border border-line rounded-lg p-5 mb-10">
       <h2 className="etiqueta text-muted mb-1">Descuento por cantidad</h2>
-      <p className="text-sm text-muted mb-5 max-w-prose">
-        Cuántas fotos hay que llevar para cada descuento. A la derecha ves cuánto saldría
-        ese pack con el precio de <span className="cifra">{precio(precioReferencia)}</span>{" "}
-        por foto. Dejá una fila vacía para no usarla.
+      <p className="text-sm text-muted mb-4 max-w-prose">
+        Cuántas fotos hay que llevar para cada descuento. Al lado ves cuánto saldría ese
+        pack. Dejá una fila vacía para no usarla.
       </p>
+
+      <label className="flex flex-wrap items-center gap-3 mb-5 text-sm">
+        <span className="text-muted">Ver los packs con la foto a</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          value={referencia}
+          onChange={(e) => setReferencia(e.target.value)}
+          className="w-32 bg-surface border border-line rounded px-2 py-1.5 cifra text-sm focus:border-accent outline-none"
+        />
+        <span className="text-xs text-muted">
+          Sólo para mirar: el precio de verdad se pone en cada partido.
+        </span>
+      </label>
 
       {aviso && <p className="text-sm text-good mb-5">{aviso}</p>}
 
@@ -72,8 +91,9 @@ export function DescuentosPanel({
             const porcentaje = Number(fila.porcentaje);
             const valida =
               Number.isFinite(desde) && desde >= 2 && Number.isFinite(porcentaje) && porcentaje > 0;
-            const cuenta = valida
-              ? calcular(precioReferencia * desde, desde, [
+            const cuenta =
+              valida && precioEjemplo > 0
+              ? calcular(precioEjemplo * desde, desde, [
                   { desde, porcentaje: Math.min(PORCENTAJE_MAXIMO, porcentaje) },
                 ])
               : null;

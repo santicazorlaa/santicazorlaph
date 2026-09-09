@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { PrecioPartido } from "@/components/precio-partido";
 import { Uploader } from "@/components/uploader";
+import { leerEscalones } from "@/lib/ajustes";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural } from "@/lib/format";
@@ -91,6 +93,8 @@ export default async function AdminEventoPage({ params }: Props) {
   });
   if (!evento) notFound();
 
+  const escalones = await leerEscalones();
+
   async function alternarPublicado() {
     "use server";
     if (!(await isAdmin())) redirect("/admin/login");
@@ -147,37 +151,12 @@ export default async function AdminEventoPage({ params }: Props) {
       </div>
 
       <section className="border border-line rounded-lg p-5 mb-10 grid gap-6 sm:grid-cols-2">
-        <div>
-          <h2 className="etiqueta text-muted mb-1">Precio por foto</h2>
-          <p className="text-sm text-muted mb-4 max-w-prose">
-            Se puede cambiar cuando quieras. Las compras ya hechas no se tocan: cada una
-            guardó el precio que la foto tenía ese día.
-          </p>
-          <form action={guardarPrecio} className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="eventId" value={evento.id} />
-            <div>
-              <label htmlFor="priceArs" className="etiqueta text-muted block mb-1.5">
-                Pesos
-              </label>
-              <input
-                id="priceArs"
-                name="priceArs"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                defaultValue={evento.priceArs}
-                className="w-40 bg-surface border border-line rounded-md px-3 py-2.5 cifra focus:border-accent outline-none"
-              />
-            </div>
-            <button
-              type="submit"
-              className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 hover:opacity-90 transition-opacity"
-            >
-              Guardar
-            </button>
-          </form>
-        </div>
+        <PrecioPartido
+          eventId={evento.id}
+          precioActual={evento.priceArs}
+          escalones={escalones}
+          action={guardarPrecio}
+        />
 
         <div>
           <h2 className="etiqueta text-muted mb-1">Portada</h2>

@@ -185,14 +185,6 @@ export default async function AdminPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <MarcaDeAgua estados={estadosMarca} aviso={aviso} ajustes={ajustesDeFoto} />
-
-      <DescuentosPanel
-        escalones={escalones}
-        precioReferencia={precioReferencia}
-        aviso={descuentos ? (AVISOS_DESCUENTOS[descuentos] ?? null) : null}
-      />
-
       <section className="border border-line rounded-lg p-5 mb-10">
         <h2 className="etiqueta text-muted mb-4">Nuevo partido</h2>
         <form action={crearEvento} className="grid gap-4 sm:grid-cols-2">
@@ -309,6 +301,25 @@ export default async function AdminPage({ searchParams }: Props) {
           ))}
         </ul>
       )}
+
+      {/* Abajo del todo porque son de las que se tocan una vez y no se miran
+          más. Arriba estorbaban lo de todos los días, que es cargar un partido
+          y ver cómo va. */}
+      <div className="mt-16 pt-10 border-t border-line">
+        <h2 className="titulo text-2xl mb-1">Ajustes del sitio</h2>
+        <p className="text-sm text-muted mb-6 max-w-prose">
+          Valen para todos los partidos. Se cambian de vez en cuando y se aplican a
+          partir de ese momento.
+        </p>
+
+      <MarcaDeAgua estados={estadosMarca} aviso={aviso} ajustes={ajustesDeFoto} />
+
+      <DescuentosPanel
+        escalones={escalones}
+        precioReferencia={precioReferencia}
+        aviso={descuentos ? (AVISOS_DESCUENTOS[descuentos] ?? null) : null}
+      />
+      </div>
     </div>
   );
 }
