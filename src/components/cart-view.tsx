@@ -5,18 +5,12 @@ import { useState } from "react";
 
 import { useCart } from "./cart-context";
 import { plural, precio } from "@/lib/format";
-import { proximoEscalon } from "@/lib/descuentos";
+import { EmpujeDescuento } from "./empuje-descuento";
 
 export function CartView() {
   const cart = useCart();
 
-  // Cuántas fotos le faltan para el próximo descuento. Decírselo es lo que
-  // convierte el descuento en un motivo para agregar una más.
-  const siguiente = proximoEscalon(cart.count, cart.escalones);
-  const faltan =
-    siguiente && cart.count > 0
-      ? { escalon: siguiente, cuantas: siguiente.desde - cart.count }
-      : null;
+
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -117,29 +111,40 @@ export function CartView() {
         <dl className="space-y-2 text-sm tabular-nums border-b border-line pb-4 mb-4">
           <div className="flex justify-between">
             <dt className="text-muted">
-              {cart.count} {cart.count === 1 ? "foto" : "fotos"}
+              {plural(cart.count, "foto suelta", "fotos sueltas")}
             </dt>
-            <dd className="cifra">{precio(cart.subtotal)}</dd>
+            {/* Tachado: es contra este número que se lee el ahorro. */}
+            <dd className={cart.cuenta.porcentaje > 0 ? "cifra line-through text-muted" : "cifra"}>
+              {precio(cart.subtotal)}
+            </dd>
           </div>
           {cart.cuenta.porcentaje > 0 && (
-            <div className="flex justify-between text-accent">
-              <dt>Descuento por {cart.count} fotos ({cart.cuenta.porcentaje}%)</dt>
-              <dd className="cifra">−{precio(cart.cuenta.ahorro)}</dd>
-            </div>
+            <>
+              <div className="flex justify-between text-accent">
+                <dt>Descuento por llevar {cart.count}</dt>
+                <dd className="cifra">−{precio(cart.cuenta.ahorro)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted">Te queda cada foto a</dt>
+                <dd className="cifra">{precio(cart.cuenta.unitario)}</dd>
+              </div>
+            </>
           )}
         </dl>
 
-        <div className="flex justify-between items-baseline mb-4">
+        <div className="flex justify-between items-baseline">
           <span className="etiqueta text-muted">Total</span>
           <span className="cifra text-3xl">{precio(cart.total)}</span>
         </div>
-
-        {faltan && (
-          <p className="text-xs text-muted border border-dashed border-line rounded-md px-3 py-2.5 mb-5">
-            Agregá {plural(faltan.cuantas, "foto más", "fotos más")} y te llevás{" "}
-            <span className="text-accent">{faltan.escalon.porcentaje}% de descuento</span>.
+        {cart.cuenta.porcentaje > 0 && (
+          <p className="text-xs text-accent text-right mt-1">
+            Ahorrás {precio(cart.cuenta.ahorro)} en esta compra
           </p>
         )}
+
+        <div className="mt-5 mb-5">
+          <EmpujeDescuento />
+        </div>
 
         <form onSubmit={pagar} className="space-y-3">
           <label htmlFor="email" className="etiqueta text-muted block">

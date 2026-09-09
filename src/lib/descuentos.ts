@@ -98,6 +98,9 @@ export type Cuenta = {
   ahorro: number;
   /// Lo que se paga.
   total: number;
+  /// A cuánto le queda cada foto. Es la cifra que mejor se compara contra el
+  /// precio de lista, y la que hace ver el descuento sin tener que dividir.
+  unitario: number;
 };
 
 export function calcular(
@@ -109,7 +112,45 @@ export function calcular(
   // Se redondea el total y el ahorro sale de la resta, así las dos cifras que
   // ve el comprador cierran entre sí y con lo que se le cobra.
   const total = Math.round(subtotal * (1 - porcentaje / 100));
-  return { subtotal, porcentaje, ahorro: subtotal - total, total };
+  return {
+    subtotal,
+    porcentaje,
+    ahorro: subtotal - total,
+    total,
+    unitario: cantidad > 0 ? Math.round(total / cantidad) : 0,
+  };
+}
+
+export type Empuje = {
+  escalon: Escalon;
+  /// Cuántas fotos más hay que sumar para llegar.
+  faltan: number;
+  /// De 0 a 100, para dibujar cuán cerca está.
+  progreso: number;
+  /// A cuánto quedaría cada foto si llegara.
+  unitarioDestino: number;
+};
+
+/**
+ * Qué le falta para el próximo escalón, listo para mostrar.
+ *
+ * `precioDeLista` es lo que sale una foto suelta. En un carrito con fotos de
+ * dos partidos a distinto precio es un promedio, que para invitar alcanza: la
+ * cuenta exacta la hace igual el servidor al cobrar.
+ */
+export function empujeHacia(
+  cantidad: number,
+  escalones: Escalon[],
+  precioDeLista: number,
+): Empuje | null {
+  const escalon = proximoEscalon(cantidad, escalones);
+  if (!escalon) return null;
+  return {
+    escalon,
+    faltan: escalon.desde - cantidad,
+    progreso: Math.min(100, Math.round((cantidad / escalon.desde) * 100)),
+    unitarioDestino: Math.round(precioDeLista * (1 - escalon.porcentaje / 100)),
+  };
 }
 
 /**

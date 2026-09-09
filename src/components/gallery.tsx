@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useCart, type CartItem } from "./cart-context";
+import { EmpujeDescuento } from "./empuje-descuento";
 import { Lightbox } from "./lightbox";
 import type { PhotoDTO } from "@/lib/photos";
 import { precio } from "@/lib/format";
@@ -257,7 +258,10 @@ export function Gallery({
       )}
 
       {cart.count > 0 && (
-        <div className="sticky bottom-4 mt-10 flex justify-center">
+        <div className="sticky bottom-4 mt-10 flex flex-col items-center gap-2">
+          <div className="max-w-md w-full bg-ground/90 backdrop-blur rounded-md">
+            <EmpujeDescuento compacto />
+          </div>
           <Link
             href="/carrito"
             className="bg-accent-solid text-accent-ink etiqueta rounded-full px-6 py-3 shadow-lg flex items-center gap-3"

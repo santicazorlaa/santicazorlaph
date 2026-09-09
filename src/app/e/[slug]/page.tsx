@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 
 import { Gallery } from "@/components/gallery";
+import { PreciosEscalonados } from "@/components/precios-escalonados";
 import { db } from "@/lib/db";
 import { leerEscalones } from "@/lib/ajustes";
-import { textoDeEscalones } from "@/lib/descuentos";
+
 import { fecha, plural, precio } from "@/lib/format";
 import { PHOTOS_PER_PAGE, photoSelect, toPhotoDTO } from "@/lib/photos";
 
@@ -51,12 +52,13 @@ export default async function EventoPage({ params }: Props) {
           </span>
         </div>
 
-        {/* Un descuento que el comprador no ve no lo hace agregar una foto más. */}
-        <p className="mt-4 text-sm text-muted">
-          Llevando varias sale menos:{" "}
-          <span className="text-accent">{textoDeEscalones(escalones)}</span>.
-        </p>
       </section>
+
+      {/* Antes de la grilla: si se entera del precio por cantidad recién en el
+          carrito, ya eligió una sola foto y la decisión está tomada. */}
+      <div className="mt-8">
+        <PreciosEscalonados priceArs={evento.priceArs} escalones={escalones} />
+      </div>
 
       <Gallery
         eventSlug={evento.slug}
