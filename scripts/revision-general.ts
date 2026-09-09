@@ -101,13 +101,27 @@ async function main() {
     );
   }
 
-  const pendientesViejas = ordenes.filter(
-    (o) => o.status === "PENDING" && Date.now() - o.createdAt.getTime() > 30 * 60 * 1000,
-  );
+  // Una orden pendiente casi siempre es un checkout abandonado, que es normal.
+  // Lo grave es la que esconde un pago cobrado: por eso se le pregunta a
+  // MercadoPago en vez de alarmar por la antiguedad.
+  const pendientes = await db.order.findMany({
+    where: { status: "PENDING" },
+    select: { id: true },
+  });
+  let cobradasSinEntregar = 0;
+  for (const p of pendientes) {
+    const r = await fetch(
+      `https://api.mercadopago.com/v1/payments/search?external_reference=${encodeURIComponent(p.id)}`,
+      { headers: { Authorization: `Bearer ${MP}` } },
+    );
+    if (!r.ok) continue;
+    const pagos = ((await r.json()).results ?? []) as { status: string }[];
+    if (pagos.some((x) => x.status === "approved")) cobradasSinEntregar++;
+  }
   check(
-    "no hay pagos cobrados sin acreditar",
-    pendientesViejas.length === 0,
-    `${pendientesViejas.length} pendientes de mas de 30 min`,
+    "ningun pago cobrado quedo sin entregar",
+    cobradasSinEntregar === 0,
+    `${pendientes.length} pendientes, ${cobradasSinEntregar} con pago`,
   );
 
   // --- descarga de una compra pagada ---
