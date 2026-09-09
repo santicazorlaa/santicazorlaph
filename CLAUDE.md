@@ -111,6 +111,15 @@ precios de la base. A MercadoPago se le manda una línea por foto, así que el
 descuento se reparte entre esas líneas y la diferencia de redondeo se acomoda en
 la última para que el total cierre al peso.
 
+**Un partido con fotos vendidas no se borra.** El renglón de la orden apunta a
+la foto con `onDelete: Restrict`, así que la base lo impide sola; el panel lo
+chequea antes nada más que para explicarlo en vez de reventar. Alguien pagó esa
+foto y su link de descarga tiene que seguir andando. Se puede despublicar.
+
+**Al borrar un partido va primero la base y después los archivos.** Al revés, si
+la base fallara, quedaría un partido con las fotos rotas. En este orden lo peor
+que puede pasar es que sobren archivos en el bucket, que no molestan a nadie.
+
 **La portada va sin marca de agua, a propósito.** Es lo que invita a entrar y
 con la marca encima no invita. El riesgo se acota por tamaño: sale a 500 px y
 con la misma compresión que una miniatura, o sea una sola foto chica por
@@ -212,15 +221,13 @@ por foto —los packs se mueven— y por eso conviene mirar el panel después.
 Después, lo que ya venía de antes:
 
 5. **Seis partidos "Bayern vs Drink" duplicados y vacíos** (0 fotos), de haber
-   reintentado la creación. Conviene borrarlos —son inofensivos pero ensucian el
-   panel— y ver por qué se crearon repetidos: puede ser que el formulario no dé
-   señal de que ya se envió. Además le dejaron al partido real una dirección
-   fea: `/e/bayern-vs-drink-7`.
-6. **Sin manera de borrar ni editar un partido desde el panel.** Hoy sólo se
-   puede crear y publicar/despublicar. Por eso los duplicados quedaron ahí, y
-   por eso tampoco se puede corregir el precio de un partido ya creado.
-7. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
+   reintentado la creación. Ya se pueden borrar desde el panel; falta hacerlo y
+   ver por qué se crearon repetidos: puede ser que el formulario no dé señal de
+   que ya se envió. Le dejaron al partido real una dirección fea,
+   `/e/bayern-vs-drink-7`, y borrarlos no la arregla: el slug ya está tomado por
+   la fila vieja hasta que se borre.
+6. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
    render (`filtrando` en `src/components/gallery.tsx`). Es viejo, no rompe
    nada, pero conviene limpiarlo.
-8. Ideas para más adelante: búsqueda por selfie, "mis compras" con cuenta,
+7. Ideas para más adelante: búsqueda por selfie, "mis compras" con cuenta,
    descuento por cantidad, aviso al jugador cuando se suben sus fotos.
