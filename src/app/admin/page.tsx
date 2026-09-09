@@ -2,16 +2,36 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { MarcaDeAgua } from "@/components/marca-de-agua";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural, precio, slugify } from "@/lib/format";
+import { SLOTS } from "@/lib/marca-slots";
 import { OrderStatus } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Panel", robots: { index: false } };
 
-export default async function AdminPage() {
+const AVISOS: Record<string, string> = {
+  guardada: "Listo: la marca nueva se aplica a las fotos que subas de ahora en adelante.",
+  restaurada: "Volvimos a usar tu logo del proyecto.",
+  "sin-archivo": "No elegiste ningún archivo.",
+  "slot-invalido": "No reconocimos qué marca querías cambiar.",
+};
+
+type Props = { searchParams: Promise<{ marca?: string; detalle?: string }> };
+
+export default async function AdminPage({ searchParams }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
+
+  const { marca, detalle } = await searchParams;
+  const aviso = marca === "error" ? (detalle ?? "No pudimos guardar el archivo") : marca ? (AVISOS[marca] ?? null) : null;
+
+  const marcasPropias = await db.watermark.findMany();
+  const estadosMarca = SLOTS.map((slot) => {
+    const fila = marcasPropias.find((m) => m.slot === slot);
+    return { slot, propia: Boolean(fila), filename: fila?.filename ?? null };
+  });
 
   const [eventos, ventas] = await Promise.all([
     db.event.findMany({
@@ -64,6 +84,8 @@ export default async function AdminPage() {
           {plural(ventas._count, "venta", "ventas")} · {precio(ventas._sum.totalArs ?? 0)}
         </p>
       </div>
+
+      <MarcaDeAgua estados={estadosMarca} aviso={aviso} />
 
       <section className="border border-line rounded-lg p-5 mb-10">
         <h2 className="etiqueta text-muted mb-4">Nuevo partido</h2>

@@ -5,6 +5,9 @@ import exifr from "exifr";
 import sharp from "sharp";
 import type { OverlayOptions, Sharp } from "sharp";
 
+import { leerMarca } from "./marca";
+import type { Slot } from "./marca-slots";
+
 import { siteName } from "./env";
 
 /// Ancho de la grilla del evento. Suficiente para que se vea bien en retina
@@ -14,36 +17,49 @@ const THUMB_WIDTH = 500;
 /// para imprimir ni para pasar por una foto comprada.
 const PREVIEW_WIDTH = 1100;
 
-/// Siempre las versiones en negativo: la marca se aplica en blanco sobre la
-/// foto. De cada una se usa el primer archivo que exista.
-const MARCAS = {
-  isotipo: ["watermark.svg", "isotipo-negativo.svg", "watermark.png"],
-  logotipo: ["logotipo-negativo.svg"],
-} as const;
+/// Archivos que vienen con el proyecto, en negativo porque la marca se aplica
+/// en blanco sobre la foto. De cada slot se usa el primero que exista.
+const MARCAS_POR_DEFECTO: Record<Slot, readonly string[]> = {
+  mosaico: ["watermark.svg", "isotipo-negativo.svg", "watermark.png"],
+  centro: ["logotipo-negativo.svg"],
+};
 
-type Marca = keyof typeof MARCAS;
 type Logo = { data: Buffer; vector: boolean; naturalWidth: number };
 
-const logoCache = new Map<Marca, Logo | null>();
+const bundledCache = new Map<Slot, Logo | null>();
 
-async function loadLogo(marca: Marca): Promise<Logo | null> {
-  const cacheado = logoCache.get(marca);
+async function loadBundled(slot: Slot): Promise<Logo | null> {
+  const cacheado = bundledCache.get(slot);
   if (cacheado !== undefined) return cacheado;
 
-  for (const nombre of MARCAS[marca]) {
+  for (const nombre of MARCAS_POR_DEFECTO[slot]) {
     try {
       const data = await readFile(path.join(process.cwd(), "assets", nombre));
       const { width } = await sharp(data).metadata();
       const logo = { data, vector: nombre.endsWith(".svg"), naturalWidth: width || 1000 };
-      logoCache.set(marca, logo);
+      bundledCache.set(slot, logo);
       return logo;
     } catch {
       // No está ese archivo: probamos el siguiente.
     }
   }
 
-  logoCache.set(marca, null);
+  bundledCache.set(slot, null);
   return null;
+}
+
+/// Si hay una marca subida desde el panel, gana sobre la del proyecto.
+async function loadLogo(slot: Slot): Promise<Logo | null> {
+  const propia = await leerMarca(slot);
+  if (propia) {
+    const { width } = await sharp(propia.data).metadata();
+    return {
+      data: propia.data,
+      vector: propia.mime === "image/svg+xml",
+      naturalWidth: width || 1000,
+    };
+  }
+  return loadBundled(slot);
 }
 
 /// El logo al ancho pedido. Un SVG se rasteriza al doble y se baja, que sale
@@ -75,8 +91,8 @@ const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 /// El logo al ancho pedido, en blanco y con una sombra oscura difusa detrás.
 /// La sombra es lo que hace que la marca se lea tanto sobre un cielo quemado
 /// como sobre la sombra de la tribuna.
-async function buildMark(marca: Marca, markWidth: number, opacity: number) {
-  const logo = await loadLogo(marca);
+async function buildMark(slot: Slot, markWidth: number, opacity: number) {
+  const logo = await loadLogo(slot);
 
   let solid: Buffer;
   if (logo) {
@@ -122,7 +138,7 @@ async function buildTile(
   gapRatio: number,
 ) {
   const markWidth = Math.round(imageWidth * scale);
-  const mark = await buildMark("isotipo", markWidth, opacity);
+  const mark = await buildMark("mosaico", markWidth, opacity);
 
   const rotated = await sharp(mark)
     .rotate(-30, { background: TRANSPARENT })
@@ -189,7 +205,7 @@ async function render(original: Buffer, targetWidth: number, style: WatermarkSty
       Math.round(width * 0.9),
     );
     layers.push({
-      input: await buildMark("logotipo", centerWidth, style.center.opacity),
+      input: await buildMark("centro", centerWidth, style.center.opacity),
       gravity: "center",
       blend: "over",
     });
@@ -199,6 +215,25 @@ async function render(original: Buffer, targetWidth: number, style: WatermarkSty
     .composite(layers)
     .jpeg({ quality: 82, progressive: true, mozjpeg: true })
     .toBuffer();
+}
+
+const ESTILO_THUMB: WatermarkStyle = {
+  tileOpacity: 0.26,
+  tileScale: 0.36,
+  tileGap: 0.14,
+};
+
+const ESTILO_PREVIEW: WatermarkStyle = {
+  tileOpacity: 0.18,
+  tileScale: 0.2,
+  tileGap: 0.16,
+  center: { opacity: 0.26, scale: 0.52 },
+};
+
+/// Aplica la marca de agua tal cual queda en la vista ampliada. Lo usa el panel
+/// para mostrar cómo se ve antes de procesar un partido entero.
+export function renderPreview(original: Buffer) {
+  return render(original, PREVIEW_WIDTH, ESTILO_PREVIEW);
 }
 
 export type ProcessedPhoto = {
@@ -222,17 +257,8 @@ export async function processPhoto(original: Buffer): Promise<ProcessedPhoto> {
   const height = (rotated ? meta.width : meta.height) ?? 0;
 
   const [thumb, preview, exif] = await Promise.all([
-    render(original, THUMB_WIDTH, {
-      tileOpacity: 0.26,
-      tileScale: 0.36,
-      tileGap: 0.14,
-    }),
-    render(original, PREVIEW_WIDTH, {
-      tileOpacity: 0.18,
-      tileScale: 0.2,
-      tileGap: 0.16,
-      center: { opacity: 0.26, scale: 0.52 },
-    }),
+    render(original, THUMB_WIDTH, ESTILO_THUMB),
+    render(original, PREVIEW_WIDTH, ESTILO_PREVIEW),
     // Cada marca guarda el lente en un tag distinto, así que los pedimos todos
     // y nos quedamos con el primero que venga.
     exifr

@@ -83,6 +83,20 @@ model Order {
   @@index([status, createdAt])
 }
 
+/// Marca de agua subida a mano desde el panel. Si no hay fila para un slot, se
+/// usa el archivo de la carpeta assets/ que viene con el proyecto.
+///
+/// Va en la base y no en el disco porque en producción el sistema de archivos
+/// es de solo lectura: el archivo en sí vive en el bucket privado.
+model Watermark {
+  /// "mosaico" (el que se repite) o "centro" (la marca grande del medio).
+  slot       String   @id
+  storageKey String
+  mime       String
+  filename   String
+  updatedAt  DateTime @updatedAt
+}
+
 model OrderItem {
   id      String @id @default(cuid())
   orderId String
