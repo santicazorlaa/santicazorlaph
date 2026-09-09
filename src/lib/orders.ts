@@ -3,6 +3,7 @@ import "server-only";
 import { customAlphabet } from "nanoid";
 
 import { db } from "./db";
+import { enviarMailDeCompra } from "./email";
 import { mercadopago as mpEnv } from "./env";
 import { createPreference, getPayment } from "./mercadopago";
 
@@ -148,8 +149,11 @@ export async function confirmPayment(paymentId: string) {
     return { ok: false, reason: `pago ${payment.status}` };
   }
 
-  await db.order.update({
-    where: { id: order.id },
+  // El estado va en el `where`: si dos avisos de MercadoPago llegan al mismo
+  // tiempo, sólo uno hace la transición. Eso es lo que garantiza que el mail
+  // salga una sola vez.
+  const transicion = await db.order.updateMany({
+    where: { id: order.id, status: OrderStatus.PENDING },
     data: {
       status: OrderStatus.PAID,
       paidAt: new Date(),
@@ -157,5 +161,11 @@ export async function confirmPayment(paymentId: string) {
     },
   });
 
-  return { ok: true, alreadyPaid: false };
+  const reciénPagada = transicion.count === 1;
+  if (reciénPagada) {
+    // Nunca lanza: si el mail falla, la compra igual quedó acreditada.
+    await enviarMailDeCompra(order.id);
+  }
+
+  return { ok: true, alreadyPaid: !reciénPagada };
 }
