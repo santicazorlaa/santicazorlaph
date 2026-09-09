@@ -47,19 +47,66 @@ async function main() {
   const antes = await db.photo.count({ where: { eventId: evento.id } });
 
   const jpeg = await fotoConExif();
-  const form = new FormData();
-  form.append("eventId", evento.id);
-  form.append("file", new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }), "_SC9001.jpg");
-
-  const res = await fetch(`${BASE}/api/admin/subir`, {
+  // Sin sesión no se puede ni pedir permiso ni mandar a procesar.
+  const sinSesionAutorizar = await fetch(`${BASE}/api/admin/subir/autorizar`, {
     method: "POST",
-    headers: { cookie },
-    body: form,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ eventId: evento.id, contentType: "image/jpeg", size: 100 }),
+  });
+  console.log(
+    `${sinSesionAutorizar.status === 401 ? "OK  " : "FALLA"}  sin sesión no autoriza subidas  (${sinSesionAutorizar.status})`,
+  );
+
+  const sinSesionProcesar = await fetch(`${BASE}/api/admin/subir/procesar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: evento.id,
+      objeto: "00000000-0000-4000-8000-000000000000",
+      filename: "x.jpg",
+    }),
+  });
+  console.log(
+    `${sinSesionProcesar.status === 401 ? "OK  " : "FALLA"}  sin sesión no procesa  (${sinSesionProcesar.status})`,
+  );
+
+  // Paso 1: pedir permiso para subir.
+  const permiso = await fetch(`${BASE}/api/admin/subir/autorizar`, {
+    method: "POST",
+    headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: evento.id,
+      contentType: "image/jpeg",
+      size: jpeg.byteLength,
+    }),
+  });
+  const datosPermiso = await permiso.json();
+  if (!permiso.ok) throw new Error(`No autorizó: ${JSON.stringify(datosPermiso)}`);
+  console.log("OK    autorizó la subida directa al bucket");
+
+  // Paso 2: subir el original derecho al bucket, sin pasar por el servidor.
+  const puesta = await fetch(datosPermiso.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "image/jpeg" },
+    body: new Uint8Array(jpeg),
+  });
+  if (!puesta.ok) throw new Error(`La subida al bucket falló: HTTP ${puesta.status}`);
+  console.log("OK    el original subió directo al bucket");
+
+  // Paso 3: procesar.
+  const res = await fetch(`${BASE}/api/admin/subir/procesar`, {
+    method: "POST",
+    headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: evento.id,
+      objeto: datosPermiso.objeto,
+      filename: "_SC9001.jpg",
+    }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(`La subida falló: ${JSON.stringify(data)}`);
+  if (!res.ok) throw new Error(`El procesado falló: ${JSON.stringify(data)}`);
 
-  console.log(`OK    subió y procesó la foto #${data.photo.code}`);
+  console.log(`OK    proceso la foto #${data.photo.code}`);
 
   const photo = await db.photo.findUnique({ where: { id: data.photo.id } });
   if (!photo) throw new Error("No quedó guardada en la base");

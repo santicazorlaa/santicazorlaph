@@ -120,6 +120,48 @@ export async function signedDownloadUrl(
   );
 }
 
+/**
+ * Link para que el navegador suba el original directo al bucket, sin pasar por
+ * el servidor. Es la única forma de subir fotos de 20 MB: las funciones de
+ * Vercel rechazan cualquier petición de más de 4,5 MB.
+ */
+export async function signedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds = 900,
+) {
+  if (usingLocalStorage()) {
+    const expires = Date.now() + expiresInSeconds * 1000;
+    const sig = createHmac("sha256", authSecret())
+      .update(`upload:${key}:${expires}`)
+      .digest("hex");
+    const params = new URLSearchParams({ key, expires: String(expires), sig });
+    return `${siteUrl}/api/upload?${params}`;
+  }
+
+  return getSignedUrl(
+    s3(),
+    new PutObjectCommand({
+      Bucket: bucketName("private"),
+      Key: key,
+      ContentType: contentType,
+    }),
+    { expiresIn: expiresInSeconds },
+  );
+}
+
+export function verifyLocalUploadSignature(
+  key: string,
+  expires: string,
+  sig: string,
+) {
+  if (Number(expires) < Date.now()) return false;
+  const expected = createHmac("sha256", authSecret())
+    .update(`upload:${key}:${expires}`)
+    .digest("hex");
+  return expected === sig;
+}
+
 export function verifyLocalDownloadSignature(
   key: string,
   expires: string,

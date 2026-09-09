@@ -113,13 +113,29 @@ async function main() {
     .jpeg()
     .toBuffer();
 
-  const form = new FormData();
-  form.append("eventId", evento.id);
-  form.append("file", new Blob([new Uint8Array(foto)], { type: "image/jpeg" }), "prueba.jpg");
-  const subida = await fetch(`${BASE}/api/admin/subir`, {
+  const permiso = await fetch(`${BASE}/api/admin/subir/autorizar`, {
     method: "POST",
-    headers: { cookie },
-    body: form,
+    headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: evento.id,
+      contentType: "image/jpeg",
+      size: foto.byteLength,
+    }),
+  });
+  const datosPermiso = await permiso.json();
+  await fetch(datosPermiso.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "image/jpeg" },
+    body: new Uint8Array(foto),
+  });
+  const subida = await fetch(`${BASE}/api/admin/subir/procesar`, {
+    method: "POST",
+    headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: evento.id,
+      objeto: datosPermiso.objeto,
+      filename: "prueba.jpg",
+    }),
   });
   const { photo } = await subida.json();
 
