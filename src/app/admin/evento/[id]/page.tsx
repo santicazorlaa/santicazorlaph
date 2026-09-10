@@ -12,7 +12,7 @@ import { fechaBreve, plural } from "@/lib/format";
 import { guardarContenido, leerContenido } from "@/lib/contenido";
 import { deleteObject, getObject, publicUrl, putObject } from "@/lib/storage";
 import { TAPA_CELULAR, TAPA_ESCRITORIO } from "@/lib/encuadre";
-import { renderPortada, renderPortfolio, renderTapa } from "@/lib/watermark";
+import { renderPortada, renderTapa } from "@/lib/watermark";
 
 export const dynamic = "force-dynamic";
 /// Elegir portada baja el original del bucket y lo vuelve a procesar, que tarda
@@ -106,45 +106,6 @@ async function usarDePortada(formData: FormData) {
 }
 
 
-/**
- * Marca o desmarca una foto para el portfolio de la portada.
- *
- * Al marcarla se genera una versión limpia y chica, del mismo tamaño que una
- * portada: un portfolio con marca de agua no muestra nada, pero a 500 px es
- * mirar y no llevarse. Al desmarcarla el archivo se borra, así el bucket no
- * junta versiones sin marca de fotos que ya no se muestran.
- */
-async function alternarPortfolio(formData: FormData) {
-  "use server";
-  if (!(await isAdmin())) redirect("/admin/login");
-
-  const photoId = String(formData.get("photoId") ?? "");
-  const foto = await db.photo.findUnique({
-    where: { id: photoId },
-    select: { originalKey: true, eventId: true, destacada: true, portfolioKey: true },
-  });
-  if (!foto) return;
-
-  if (foto.destacada) {
-    await db.photo.update({
-      where: { id: photoId },
-      data: { destacada: false, portfolioKey: null },
-    });
-    if (foto.portfolioKey) await deleteObject("public", foto.portfolioKey).catch(() => {});
-  } else {
-    const original = await getObject("private", foto.originalKey);
-    const key = `portfolio/${photoId}.${Date.now().toString(36)}.jpg`;
-    await putObject("public", key, await renderPortfolio(original), "image/jpeg");
-    await db.photo.update({
-      where: { id: photoId },
-      data: { destacada: true, portfolioKey: key },
-    });
-  }
-
-  revalidatePath(`/admin/evento/${foto.eventId}`);
-  revalidatePath("/");
-}
-
 /// Usa esta foto de fondo del encabezado del sitio. Sale del original, así que
 /// queda mejor que subir una imagen ya achicada desde el panel.
 async function usarDeTapa(formData: FormData) {
@@ -207,7 +168,7 @@ export default async function AdminEventoPage({ params }: Props) {
       photos: {
         orderBy: { createdAt: "desc" },
         take: 60,
-        select: { id: true, code: true, thumbKey: true, destacada: true },
+        select: { id: true, code: true, thumbKey: true },
       },
     },
   });
@@ -395,19 +356,6 @@ export default async function AdminEventoPage({ params }: Props) {
                           </button>
                         </form>
                       )}
-                      <form action={alternarPortfolio}>
-                        <input type="hidden" name="photoId" value={photo.id} />
-                        <button
-                          type="submit"
-                          className={`etiqueta text-[0.6rem] transition-colors ${
-                            photo.destacada
-                              ? "text-accent hover:text-danger"
-                              : "text-muted hover:text-accent"
-                          }`}
-                        >
-                          {photo.destacada ? "En portfolio ✕" : "Portfolio"}
-                        </button>
-                      </form>
                       <form action={usarDeTapa}>
                         <input type="hidden" name="photoId" value={photo.id} />
                         <button

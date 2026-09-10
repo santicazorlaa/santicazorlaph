@@ -46,12 +46,18 @@ const CALIDAD_THUMB = 72;
 /// comparte con el editor del panel.
 const CALIDAD_TAPA = 60;
 
-/// Las fotos del portfolio. Más grandes que una portada porque tienen otro
-/// trabajo: una portada invita a entrar a un partido, el portfolio le tiene que
-/// demostrar el nivel a un organizador que está decidiendo si contratarlo. A
-/// 500 px no demostraba nada.
-const PORTFOLIO_ANCHO = 900;
-const CALIDAD_PORTFOLIO = 68;
+/// La grande, la que se abre al tocar una foto del portfolio. Es la única foto
+/// del sitio que se publica grande y sin marca de agua, y eso es una decisión,
+/// no un descuido: el portfolio no está a la venta —su trabajo es mostrarle el
+/// nivel a un organizador— y una marca encima no muestra nada. 1600 px se ve
+/// impecable en cualquier pantalla y no alcanza para una impresión grande, que
+/// es exactamente el equilibrio buscado.
+const PORTFOLIO_ANCHO = 1600;
+const CALIDAD_PORTFOLIO = 74;
+
+/// La chica del portfolio: la de la grilla y la de la cinta de la portada.
+const PORTFOLIO_THUMB = 900;
+const CALIDAD_PORTFOLIO_THUMB = 70;
 
 /// El retrato de Santi. Es la única imagen del sitio que no se limita por
 /// tamaño, y el motivo es simple: no está a la venta. Nadie le compra una foto
@@ -365,8 +371,23 @@ export async function renderTapa(
 
 /// Una foto del portfolio de la portada. Sin marca de agua: un portfolio con
 /// marca no le muestra el trabajo a nadie.
-export function renderPortfolio(original: Buffer) {
-  return limpia(original, PORTFOLIO_ANCHO, CALIDAD_PORTFOLIO);
+/**
+ * Las dos versiones de una foto del portfolio: la grande que se abre y la chica
+ * de la grilla. Ninguna lleva marca de agua.
+ *
+ * Devuelve además las medidas, que la grilla necesita para reservarle el lugar
+ * a cada foto antes de que cargue y no reacomodarse a medida que van llegando.
+ */
+export async function procesarPortfolio(original: Buffer) {
+  const derecha = await sharp(original, { failOn: "none" }).rotate().toBuffer();
+  const { width = 0, height = 0 } = await sharp(derecha).metadata();
+
+  const [grande, thumb] = await Promise.all([
+    limpia(derecha, PORTFOLIO_ANCHO, CALIDAD_PORTFOLIO),
+    limpia(derecha, PORTFOLIO_THUMB, CALIDAD_PORTFOLIO_THUMB),
+  ]);
+
+  return { grande, thumb, width, height };
 }
 
 /// El retrato de Santi para la sección "quién soy".

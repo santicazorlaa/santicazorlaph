@@ -88,6 +88,18 @@
   letter-spacing: -0.015em;
 }
 
+/* Nada del sitio se desplaza para el costado.
+
+   La cinta del portfolio va de lado a lado usando el ancho de la ventana, y ese
+   ancho incluye la barra de scroll: sobraban siete píxeles por lado y la página
+   entera se podía correr en horizontal. Va `clip` y no `hidden` porque `hidden`
+   convierte al body en un contenedor de scroll y rompe todo lo que se queda
+   pegado al desplazarse. */
+html,
+body {
+  overflow-x: clip;
+}
+
 /* Lo que aparece al llegar a la pantalla. Ver `aparecer.tsx`.
 
    Sube 16px y se hace visible en 500ms. Es más lento que cualquier botón del
@@ -97,21 +109,49 @@
 .aparece {
   opacity: 0;
   transform: translateY(16px);
+  /* El desenfoque hace la mitad del trabajo: sin él, algo que aparece de golpe
+     se lee como un parpadeo; saliendo de foco, se lee como algo que se termina
+     de acomodar. Seis píxeles alcanzan — desenfocar es de las cosas más caras
+     que se le pueden pedir a un navegador, y arriba de veinte se nota en un
+     teléfono. */
+  filter: blur(6px);
   transition:
     opacity 500ms cubic-bezier(0.215, 0.61, 0.355, 1),
-    transform 500ms cubic-bezier(0.215, 0.61, 0.355, 1);
+    transform 500ms cubic-bezier(0.215, 0.61, 0.355, 1),
+    filter 500ms cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
 .aparece-visible {
   opacity: 1;
   transform: none;
+  filter: none;
+}
+
+/* Cada palabra de un título, en la misma idea pero más corta: el recorrido es
+   de una palabra, no de una sección entera. */
+.palabra-entrante {
+  opacity: 0;
+  transform: translateY(0.35em);
+  filter: blur(8px);
+  transition:
+    opacity 420ms cubic-bezier(0.215, 0.61, 0.355, 1),
+    transform 420ms cubic-bezier(0.215, 0.61, 0.355, 1),
+    filter 420ms cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+.palabra-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   /* Sin movimiento no hay entrada que valga: se muestra y listo. */
-  .aparece {
+  .aparece,
+  .palabra-entrante {
     opacity: 1;
     transform: none;
+    filter: none;
     transition: none;
   }
 }
@@ -141,14 +181,10 @@
      video para nada. Una animación de `transform` ya se compone sola. */
 }
 
-/* Se frena al pasar el mouse por encima: si algo llama la atención, lo primero
-   que se hace es querer mirarlo quieto. Sólo con mouse de verdad — en un
-   teléfono no hay "pasar por encima" y quedaría frenada para siempre. */
-@media (hover: hover) and (pointer: fine) {
-  .cinta-portfolio:hover {
-    animation-play-state: paused;
-  }
-}
+/* No se frena al pasar el mouse por encima. Lo que hace en cambio es acercarse
+   bajo el puntero, repartiéndose entre las fotos vecinas: la cinta sigue viva y
+   además responde. Frenarla contestaba la misma pregunta cortando el
+   movimiento; esto la contesta sin apagar nada. */
 
 @media (prefers-reduced-motion: reduce) {
   /* Quieta, y a cambio se puede recorrer a mano: sacar el movimiento no puede

@@ -5,6 +5,23 @@ import { useRef, useState } from "react";
 
 type Estado = { nombre: string; estado: "esperando" | "subiendo" | "listo" | "error"; error?: string };
 
+type Destino = { tipo: "partido" | "portfolio"; extra: Record<string, string> };
+
+/// Los dos destinos posibles. Comparten el camino en dos pasos —el original
+/// viaja derecho al bucket, el servidor lo procesa después— y se diferencian en
+/// qué hace ese procesado: una foto de partido lleva marca de agua, una del
+/// portfolio no.
+const RUTAS = {
+  partido: {
+    autorizar: "/api/admin/subir/autorizar",
+    procesar: "/api/admin/subir/procesar",
+  },
+  portfolio: {
+    autorizar: "/api/admin/portfolio/autorizar",
+    procesar: "/api/admin/portfolio/procesar",
+  },
+} as const;
+
 /**
  * La foto va en dos pasos: primero el original viaja derecho al bucket con un
  * link firmado, y recién después el servidor la procesa. Nunca pasa por el
@@ -12,12 +29,13 @@ type Estado = { nombre: string; estado: "esperando" | "subiendo" | "listo" | "er
  *
  * Devuelve null si salió bien, o el mensaje de error.
  */
-async function subirUna(eventId: string, file: File): Promise<string | null> {
-  const permiso = await fetch("/api/admin/subir/autorizar", {
+async function subirUna(destino: Destino, file: File): Promise<string | null> {
+  const rutas = RUTAS[destino.tipo];
+  const permiso = await fetch(rutas.autorizar, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      eventId,
+      ...destino.extra,
       contentType: file.type || "image/jpeg",
       size: file.size,
     }),
@@ -32,11 +50,11 @@ async function subirUna(eventId: string, file: File): Promise<string | null> {
   });
   if (!puesta.ok) return `No se pudo subir el archivo (${puesta.status})`;
 
-  const procesado = await fetch("/api/admin/subir/procesar", {
+  const procesado = await fetch(rutas.procesar, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      eventId,
+      ...destino.extra,
       objeto: datosPermiso.objeto,
       filename: file.name,
     }),
@@ -49,7 +67,13 @@ async function subirUna(eventId: string, file: File): Promise<string | null> {
 
 /// Las fotos se suben de a una y en serie: cada una se procesa en el servidor
 /// (marca de agua + miniaturas) y mandarlas todas juntas lo satura.
-export function Uploader({ eventId }: { eventId: string }) {
+export function Uploader({ eventId }: { eventId?: string }) {
+  // Sin partido, la foto va al portfolio: la selección curada, que no pertenece
+  // a ningún partido y no está a la venta.
+  const destino: Destino = eventId
+    ? { tipo: "partido", extra: { eventId } }
+    : { tipo: "portfolio", extra: {} };
+
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [cola, setCola] = useState<Estado[]>([]);
@@ -66,7 +90,7 @@ export function Uploader({ eventId }: { eventId: string }) {
       );
 
       try {
-        const error = await subirUna(eventId, lista[i]);
+        const error = await subirUna(destino, lista[i]);
         setCola((prev) =>
           prev.map((c, j) =>
             j === i
@@ -108,8 +132,9 @@ export function Uploader({ eventId }: { eventId: string }) {
       />
 
       <p className="mt-3 text-xs text-muted">
-        Se les pone la marca de agua automáticamente. El original queda guardado aparte y no
-        se muestra en ningún lado hasta que alguien lo compra.
+        {destino.tipo === "partido"
+          ? "Se les pone la marca de agua automáticamente. El original queda guardado aparte y no se muestra en ningún lado hasta que alguien lo compra."
+          : "Van sin marca de agua y se ven grandes: son tu carta de presentación, no están a la venta. El original queda guardado y no se publica."}
       </p>
 
       {cola.length > 0 && (

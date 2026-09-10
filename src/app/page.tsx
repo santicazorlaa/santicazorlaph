@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { Aparecer } from "@/components/aparecer";
+import { TextoEntrante } from "@/components/texto-entrante";
 import { CintaPortfolio } from "@/components/cinta-portfolio";
 import { ListaPartidos, type PartidoEnLista } from "@/components/lista-partidos";
 import { leerContenido, leerLineas, leerPasos, linkWhatsapp } from "@/lib/contenido";
@@ -23,20 +26,13 @@ export default async function Home() {
         },
       },
     }),
-    db.photo.findMany({
-      where: { destacada: true, portfolioKey: { not: null } },
-      orderBy: [{ ordenPortfolio: "asc" }, { createdAt: "desc" }],
+    db.portfolioPhoto.findMany({
+      orderBy: [{ orden: "asc" }, { createdAt: "desc" }],
       // La cinta carga sus fotos de entrada, así que el tope no es estético
-      // sino de peso. Un portfolio curado son quince o veinte fotos; más que
-      // eso ya no es una selección.
+      // sino de peso: en la portada va una muestra, y el portfolio completo
+      // está a un clic.
       take: 16,
-      select: {
-        id: true,
-        portfolioKey: true,
-        width: true,
-        height: true,
-        event: { select: { title: true } },
-      },
+      select: { id: true, key: true, thumbKey: true, width: true, height: true, titulo: true },
     }),
   ]);
 
@@ -120,9 +116,9 @@ export default async function Home() {
         )}
 
         <div className="relative w-full mx-auto max-w-6xl px-5 py-20 sm:py-24">
-          <h1 className="titulo text-5xl sm:text-7xl max-w-3xl text-balance">
+          <TextoEntrante as="h1" className="titulo text-5xl sm:text-7xl max-w-3xl text-balance">
             {contenido["hero.titular"]}
-          </h1>
+          </TextoEntrante>
           {contenido["hero.bajada"] && (
             <p className="mt-6 max-w-xl text-lg text-muted">{contenido["hero.bajada"]}</p>
           )}
@@ -166,7 +162,7 @@ export default async function Home() {
         {pasos.length > 0 && (
           <section id="como-funciona" className="py-16 border-t border-line scroll-mt-20">
             <Aparecer>
-              <h2 className="titulo text-3xl sm:text-4xl mb-2">Cómo funciona</h2>
+              <TextoEntrante as="h2" className="titulo text-3xl sm:text-4xl mb-2">Cómo funciona</TextoEntrante>
               <p className="text-muted mb-10 max-w-xl">
                 Pagás sólo las fotos que elegís, y las tenés en el momento.
               </p>
@@ -268,17 +264,28 @@ export default async function Home() {
         {destacadas.length > 0 && (
           <section id="portfolio" className="py-16 border-t border-line scroll-mt-20">
             <Aparecer>
-              <h2 className="titulo text-3xl sm:text-4xl mb-2">Lo mejor de mi trabajo</h2>
-              <p className="text-muted mb-10 max-w-xl">
-                Una selección chica, elegida a mano entre todo lo que cubrí.
-              </p>
+              <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
+                <div>
+                  <TextoEntrante as="h2" className="titulo text-3xl sm:text-4xl mb-2">Lo mejor de mi trabajo</TextoEntrante>
+                  <p className="text-muted max-w-xl">
+                    Una selección chica, elegida a mano entre todo lo que cubrí.
+                  </p>
+                </div>
+                <Link
+                  href="/portfolio"
+                  className="etiqueta border border-line rounded-full px-5 py-3 shrink-0 con-mouse:hover:border-accent active:scale-[0.97] transition-[border-color,transform] duration-150 ease-out motion-reduce:transition-none"
+                >
+                  Ver todo →
+                </Link>
+              </div>
               <CintaPortfolio
                 fotos={destacadas.map((foto) => ({
                   id: foto.id,
-                  url: publicUrl(foto.portfolioKey!),
+                  url: publicUrl(foto.thumbKey),
+                  urlGrande: publicUrl(foto.key),
                   ancho: foto.width,
                   alto: foto.height,
-                  titulo: foto.event.title,
+                  titulo: foto.titulo ?? "",
                 }))}
               />
             </Aparecer>
@@ -287,9 +294,9 @@ export default async function Home() {
 
         {whatsapp && (
           <section className="py-20 border-t border-line text-center">
-            <h2 className="titulo text-3xl sm:text-4xl text-balance max-w-2xl mx-auto">
+            <TextoEntrante as="h2" className="titulo text-3xl sm:text-4xl text-balance max-w-2xl mx-auto">
               ¿Tenés un evento en puerta?
-            </h2>
+            </TextoEntrante>
             <p className="text-muted mt-4 max-w-lg mx-auto">
               Escribime y lo charlamos. Contame qué es, cuándo y dónde.
             </p>

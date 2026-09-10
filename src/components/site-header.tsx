@@ -28,6 +28,12 @@ export function SiteHeader() {
             Partidos
           </Link>
           <Link
+            href="/portfolio"
+            className="etiqueta text-muted hover:text-ink transition-colors"
+          >
+            Portfolio
+          </Link>
+          <Link
             href="/carrito"
             className="etiqueta flex items-center gap-2 border border-line hover:border-accent rounded-full px-3 sm:px-4 py-2 transition-colors"
           >

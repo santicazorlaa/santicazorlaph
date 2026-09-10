@@ -1,3 +1,4 @@
+import { TextoEntrante } from "@/components/texto-entrante";
 import { notFound } from "next/navigation";
 
 import { Gallery } from "@/components/gallery";
@@ -43,7 +44,9 @@ export default async function EventoPage({ params }: Props) {
     <div className="mx-auto max-w-6xl px-5">
       <section className="py-10 sm:py-14 border-b border-line">
         <p className="etiqueta text-accent mb-4 tabular-nums">{fecha(evento.date)}</p>
-        <h1 className="titulo text-4xl sm:text-6xl text-balance">{evento.title}</h1>
+        <TextoEntrante as="h1" className="titulo text-4xl sm:text-6xl text-balance">
+          {evento.title}
+        </TextoEntrante>
         <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted tabular-nums">
           {evento.location && <span>{evento.location}</span>}
           <span>{plural(evento._count.photos, "foto", "fotos")}</span>

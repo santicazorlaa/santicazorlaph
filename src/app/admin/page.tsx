@@ -27,7 +27,16 @@ export default async function AdminPage() {
   inicioDelMes.setDate(1);
   inicioDelMes.setHours(0, 0, 0, 0);
 
-  const [partidos, publicados, fotos, ventasDelMes, pendientes, ultimoPartido, ultimaVenta] =
+  const [
+    partidos,
+    publicados,
+    fotos,
+    ventasDelMes,
+    pendientes,
+    ultimoPartido,
+    portfolio,
+    ultimaVenta,
+  ] =
     await Promise.all([
       db.event.count(),
       db.event.count({ where: { published: true } }),
@@ -39,6 +48,7 @@ export default async function AdminPage() {
       }),
       db.order.count({ where: { status: OrderStatus.PENDING } }),
       db.event.findFirst({ orderBy: { date: "desc" }, select: { title: true, date: true } }),
+      db.portfolioPhoto.count(),
       db.order.findFirst({
         where: { status: OrderStatus.PAID },
         orderBy: { paidAt: "desc" },
@@ -89,10 +99,21 @@ export default async function AdminPage() {
         />
 
         <Tarjeta
+          href="/admin/portfolio"
+          titulo="Portfolio"
+          dato={portfolio === 0 ? "Vacío" : String(portfolio)}
+          detalle={
+            portfolio === 0
+              ? "Tu carta de presentación: subí tus mejores fotos."
+              : "Las fotos que se ven en la portada y en la página de portfolio."
+          }
+        />
+
+        <Tarjeta
           href="/admin/contenido"
           titulo="Contenido del sitio"
           dato="Textos y fotos"
-          detalle="Tu historia, la tapa, el portfolio, el WhatsApp y los legales."
+          detalle="Tu historia, la tapa del encabezado, el WhatsApp y los legales."
         />
 
         <Tarjeta

@@ -57,23 +57,11 @@ model Photo {
   lens    String?
   takenAt DateTime?
 
-  /// Elegida a mano para el portfolio de la portada. Es una selección chica y
-  /// curada: lo que le muestra el nivel de Santi a un organizador que no va a
-  /// mirar 5.000 fotos de un partido.
-  destacada Boolean @default(false)
-  /// Versión limpia y chica de la foto destacada, del mismo tamaño que una
-  /// portada. Sin marca de agua —un portfolio con marca no muestra nada— pero
-  /// a 500 px, que es mirar y no llevarse.
-  portfolioKey String?
-  /// Para ordenar el portfolio a gusto. Menor primero.
-  ordenPortfolio Int @default(0)
-
   createdAt DateTime @default(now())
 
   orderItems OrderItem[]
 
   @@index([eventId, takenAt])
-  @@index([destacada, ordenPortfolio])
 }
 
 model Order {
@@ -138,4 +126,36 @@ model OrderItem {
 model Ajuste {
   clave String @id
   valor String
+}
+
+/// Una foto del portfolio: la selección curada que Santi muestra como carta de
+/// presentación, sobre todo a organizadores y marcas.
+///
+/// No sale de ningún partido y **no está a la venta**, y por eso es la única
+/// foto del sitio que se publica grande y sin marca de agua: su trabajo es
+/// mostrar el nivel, y una marca encima no muestra nada. Se sube aparte,
+/// eligiendo a mano, que es como se arma un portfolio.
+model PortfolioPhoto {
+  id String @id @default(cuid())
+
+  /// El original, en el bucket privado. Nunca se sirve: está para poder rehacer
+  /// las versiones publicadas si cambia alguna medida.
+  originalKey String
+  /// La versión grande y limpia. Es la que se ve al abrir una foto.
+  key String
+  /// La versión para la grilla y para la cinta de la portada.
+  thumbKey String
+
+  width  Int
+  height Int
+
+  /// Un pie opcional. Vacío no muestra nada.
+  titulo String?
+
+  /// Para ordenarlas a gusto. Menor primero.
+  orden Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([orden, createdAt])
 }

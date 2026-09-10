@@ -23,7 +23,7 @@ import { db } from "../src/lib/db";
 import { guardarContenido, leerContenido } from "../src/lib/contenido";
 import { deleteObject, getObject, putObject } from "../src/lib/storage";
 import { leerEncuadre, TAPA_CELULAR, TAPA_ESCRITORIO } from "../src/lib/encuadre";
-import { renderPortfolio, renderRetrato, renderTapa } from "../src/lib/watermark";
+import { procesarPortfolio, renderRetrato, renderTapa } from "../src/lib/watermark";
 
 const aplicar = process.argv.includes("--aplicar");
 const SELLO = Date.now().toString(36);
@@ -91,24 +91,37 @@ async function main() {
     }
   }
 
-  const destacadas = await db.photo.findMany({
-    where: { destacada: true },
-    select: { id: true, originalKey: true, portfolioKey: true },
+  const portfolio = await db.portfolioPhoto.findMany({
+    select: { id: true, originalKey: true, key: true, thumbKey: true },
   });
-  console.log(`\nPortfolio: ${destacadas.length} fotos`);
+  console.log(`
+Portfolio: ${portfolio.length} fotos`);
 
-  for (const foto of destacadas) {
-    const destino = `portfolio/${foto.id}.${SELLO}.jpg`;
+  for (const foto of portfolio) {
+    const etiqueta = `  #${foto.id.slice(-6)}`;
     try {
-      await rehacer(`  #${foto.id.slice(-6)}`, foto.originalKey, destino, renderPortfolio);
+      const original = await getObject("private", foto.originalKey);
+      const hecha = await procesarPortfolio(original);
+
+      const key = `portfolio/${foto.id}.${SELLO}.jpg`;
+      const thumbKey = `portfolio/${foto.id}.${SELLO}-chica.jpg`;
+      console.log(`${etiqueta}: ${Math.round(hecha.grande.length / 1024)} KB + ${Math.round(hecha.thumb.length / 1024)} KB`);
+
       if (aplicar) {
-        await db.photo.update({ where: { id: foto.id }, data: { portfolioKey: destino } });
-        if (foto.portfolioKey && foto.portfolioKey !== destino) {
-          await deleteObject("public", foto.portfolioKey).catch(() => {});
+        await putObject("public", key, hecha.grande, "image/jpeg");
+        await putObject("public", thumbKey, hecha.thumb, "image/jpeg");
+        await db.portfolioPhoto.update({
+          where: { id: foto.id },
+          data: { key, thumbKey, width: hecha.width, height: hecha.height },
+        });
+        for (const vieja of [foto.key, foto.thumbKey]) {
+          if (vieja && vieja !== key && vieja !== thumbKey) {
+            await deleteObject("public", vieja).catch(() => {});
+          }
         }
       }
     } catch (error) {
-      console.log(`  #${foto.id.slice(-6)}: FALLÓ — ${error instanceof Error ? error.message : error}`);
+      console.log(`${etiqueta}: FALLÓ — ${error instanceof Error ? error.message : error}`);
     }
   }
 

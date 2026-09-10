@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import { Aparecer } from "./aparecer";
 import { useCart, type CartItem } from "./cart-context";
 import { EmpujeDescuento } from "./empuje-descuento";
 import { Lightbox } from "./lightbox";
@@ -208,6 +209,14 @@ export function Gallery({
               const enCarrito = cart.has(photo.id);
               return (
                 <li key={photo.id} className="relative group">
+                  {/* Cada foto entra por su cuenta al llegar a la pantalla. En
+                      una galería que se recorre scrolleando, que aparezcan de a
+                      una acompaña el movimiento; que estén todas puestas de
+                      antemano lo vuelve una pared quieta. El escalón se calcula
+                      sobre la posición dentro de la tanda, no sobre el total:
+                      con "Cargar más", la foto 300 no puede esperar veinte
+                      segundos. */}
+                  <Aparecer retraso={Math.min(indice % 12, 5) * 45}>
                   <button
                     type="button"
                     onClick={() => setOpenIndex(indice)}
@@ -242,6 +251,7 @@ export function Gallery({
                   <span className="absolute top-2 left-2 etiqueta text-[0.6rem] bg-ground/70 backdrop-blur-sm rounded px-1.5 py-0.5 text-muted">
                     #{photo.code}
                   </span>
+                  </Aparecer>
                 </li>
               );
             })}
