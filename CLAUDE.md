@@ -76,6 +76,15 @@ mal apuntado mueve plata de verdad.
 
 **Prisma fijado en v6.** La v8 reestructuró la CLI y la ata a su plataforma.
 
+**Una migración que borra algo va con `IF EXISTS`.** Las dos bases no están en
+el mismo punto: lo que se prueba en desarrollo puede tardar semanas en
+publicarse, así que una migración que borra una columna creada y borrada entre
+medio se encuentra en producción con que esa columna nunca existió. Pasó al
+publicar el portfolio: la migración se cayó a mitad y dejó la base real
+atascada, sin poder aplicar ninguna otra. Se desatasca con
+`npx tsx --env-file=.env.vercel scripts/migrar-produccion.ts resolve --rolled-back <nombre>`
+y se vuelve a aplicar.
+
 **Un cambio de esquema (`prisma/schema.prisma`) se aplica dos veces, a mano.**
 `npx prisma migrate dev` contra `.env` lo prueba en la base de desarrollo. Antes
 de publicar, `npm run migrar:produccion` aplica el mismo historial contra la
@@ -351,7 +360,13 @@ prueba "CAT vs Lastenia", con fotos sintéticas, quedó despublicado — no se p
 borrar porque tiene fotos vendidas en órdenes de prueba, y el esquema protege eso
 a propósito.
 
-En septiembre de 2026 se rediseñó y se publicó: fondo oscuro con azul,
+En septiembre de 2026 se publicó además el sitio de fotógrafo: encabezado con
+foto encuadrable por pantalla, cómo funciona, quién soy, servicios para
+organizadores, portfolio propio con página aparte, WhatsApp y legales; el panel
+partido en tarjetas; las ventas mostrando qué fotos se compraron; el Instagram
+opcional del comprador; y las animaciones de entrada al scrollear.
+
+Antes de eso se rediseñó y se publicó: fondo oscuro con azul,
 tipografías Inter Tight e Inter, grilla sin recortes, visor con deslizamiento,
 marca de agua e intensidad regulables, portada elegible, precio editable,
 descuento por cantidad configurable y borrado de partidos.
@@ -371,12 +386,15 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 Ya está todo publicado. Lo que queda:
 
-1. **Lo cargado está en la base de desarrollo, no en la real.** Santi escribió
-   su historia, el WhatsApp, las redes, los legales y eligió la tapa, pero todo
-   eso vive en `santicazorlaph_dev`. Publicar el código sin copiar esas filas
-   deja el sitio con las secciones vacías. Las imágenes sí viajan solas: el
-   bucket es compartido. Falta también elegir la portada de cada partido y
-   marcar las fotos del portfolio (las destacadas de hoy son las de prueba).
+1. **El portfolio de producción está vacío.** Es lo único que falta para que el
+   sitio nuevo se vea entero: Santi tiene que subir sus mejores fotos desde
+   `/admin/portfolio`. Sin eso, la cinta de la portada y la página `/portfolio`
+   no aparecen. En la base de desarrollo hay siete fotos sintéticas de prueba
+   para mirar cómo queda. Falta también elegir la portada de cada partido.
+
+   Los textos del sitio ya se copiaron a la base real con
+   `scripts/copiar-contenido.ts`, que es el camino cada vez que Santi escriba
+   algo probando en local.
 2. **Por qué se crearon seis partidos duplicados.** Ya se borraron, pero la
    causa sigue ahí: lo más probable es que el formulario de "Nuevo partido" no
    dé señal de que ya se envió y se pueda apretar dos veces.
