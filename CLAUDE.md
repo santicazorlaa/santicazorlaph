@@ -39,6 +39,12 @@ dispara.
 Las credenciales están en `.env` (local) y en las variables de Vercel. El archivo
 `.env.vercel` es la copia para pegar en Vercel; ninguno de los dos va a git.
 
+**`.env` y `.env.vercel` apuntan a bases distintas, a propósito.** `.env` usa
+`santicazorlaph_dev`; `.env.vercel` usa `neondb`, la real. Es el mismo proyecto
+de Neon, así que no suma costo. Antes de esto las dos apuntaban a la misma base,
+y trabajar en local tocaba clientes y ventas de verdad — pasó una vez, sin
+consecuencias porque se notó a tiempo, pero fue la razón de separarlas.
+
 ## Decisiones que conviene no revisitar sin motivo
 
 **El original nunca llega al navegador.** Vive en el bucket privado
@@ -69,6 +75,15 @@ publicado use las reales. Trabajar contra la cuenta real significa que un script
 mal apuntado mueve plata de verdad.
 
 **Prisma fijado en v6.** La v8 reestructuró la CLI y la ata a su plataforma.
+
+**Un cambio de esquema (`prisma/schema.prisma`) se aplica dos veces, a mano.**
+`npx prisma migrate dev` contra `.env` lo prueba en la base de desarrollo. Antes
+de publicar, `npm run migrar:produccion` aplica el mismo historial contra la
+base real, usando `.env.vercel`. Publicar código sin este segundo paso deja el
+sitio funcionando contra un esquema viejo. Storage (R2) y el mail (Resend) en
+cambio siguen compartidos entre local y producción: separarlos no valía la
+complejidad, y lo peor que puede pasar por eso son archivos de sobra en el
+bucket, que ya está aceptado como riesgo menor en otro lado de este documento.
 
 **La estética se cambia desde `globals.css`, no pantalla por pantalla.** Los
 colores, las tipografías y hasta el peso y la caja de los títulos son variables
@@ -178,6 +193,18 @@ tampoco su partido. No correrlo si ya hay ventas reales.
 que los originales no se filtren, avisos firmados y sin firmar, panel protegido,
 descarga de una compra pagada, y en qué cuenta de MercadoPago está cobrando.
 Hay más scripts en `scripts/`, cada uno con su explicación arriba.
+
+`scripts/datos-de-prueba.ts` crea un partido ("CAT vs Lastenia") con 14 fotos
+sintéticas generadas en el momento, para tener algo con qué probar el sitio en
+la base de desarrollo. Se puede correr las veces que haga falta: primero borra
+el partido anterior con ese mismo nombre, si existe.
+
+Cuando el esquema de la base cambia (un campo nuevo, una tabla nueva), después
+de publicar el código hace falta avisarle a la base real:
+
+```bash
+npm run migrar:produccion
+```
 
 ## Estado
 
