@@ -580,8 +580,8 @@ escuché": pantallas de espera con la forma de lo que viene, punto de espera en
 los links, y todos los botones y formularios contestando el clic. El mismo día
 se rehizo la cinta del portfolio con el motor nuevo: lupa con repulsión,
 arrastre con el dedo e inercia, y la foto volando entre la cinta y el visor.
-Las dos cosas están hechas y verificadas en local, **pero todavía no se
-publicaron**.
+Las dos cosas se publicaron ese día. Santi subió además las fotos del portfolio
+y escribió los textos del sitio, todo desde el panel de producción.
 
 En septiembre de 2026 se publicó además el sitio de fotógrafo: encabezado con
 foto encuadrable por pantalla, cómo funciona, quién soy, servicios para
@@ -609,15 +609,18 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 Ya está todo publicado. Lo que queda:
 
-1. **El portfolio de producción está vacío.** Es lo único que falta para que el
-   sitio nuevo se vea entero: Santi tiene que subir sus mejores fotos desde
-   `/admin/portfolio`. Sin eso, la cinta de la portada y la página `/portfolio`
-   no aparecen. En la base de desarrollo hay siete fotos sintéticas de prueba
-   para mirar cómo queda. Falta también elegir la portada de cada partido.
+1. **Lo bueno está en producción, no en desarrollo.** El 10 de septiembre de
+   2026 Santi subió las fotos del portfolio y escribió los textos del sitio
+   **directamente desde el panel de producción**. La base de desarrollo sigue
+   con las siete fotos sintéticas y los textos viejos.
 
-   Los textos del sitio ya se copiaron a la base real con
-   `scripts/copiar-contenido.ts`, que es el camino cada vez que Santi escriba
-   algo probando en local.
+   De eso sale una advertencia: **`scripts/copiar-contenido.ts` copia de
+   desarrollo a producción, así que correrlo ahora le pisaría a Santi todo lo
+   que escribió.** Servía cuando él probaba en local y había que subir el
+   resultado; ahora el flujo es al revés. Antes de usarlo, preguntar.
+
+   Lo mismo vale para cualquier script que escriba en la base real: la copia de
+   verdad del contenido y del portfolio vive ahí y no hay otra.
 2. **Por qué se crearon seis partidos duplicados.** Ya se borraron, pero la
    causa sigue ahí: lo más probable es que el formulario de "Nuevo partido" no
    dé señal de que ya se envió y se pueda apretar dos veces.
