@@ -205,3 +205,139 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* La señal de "ya te escuché".
+
+   Un botón que no cambia al apretarlo, o un cambio de pantalla sin ninguna
+   marca, se vive como el sitio colgado aunque tarde exactamente lo mismo. Lo
+   que sigue existe sólo para contestar el clic; nada de esto acelera nada.
+
+   Las dos señales de navegación arrancan invisibles y con 120ms de retraso: si
+   la pantalla ya estaba traída de antemano el cambio es instantáneo y la señal
+   no llega a verse nunca, que es lo que corresponde. Sólo aparece cuando la
+   espera es real. Van con tamaño reservado de entrada —no aparecen de la nada—
+   porque una señal que empuja el texto al costado es peor que no tener señal. */
+.senal-link {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 0.5em;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  /* Reserva el lugar sin dibujar nada. */
+  visibility: hidden;
+  flex: none;
+}
+
+.senal-link-activa {
+  visibility: visible;
+  animation:
+    senal-aparece 200ms ease-out 120ms forwards,
+    senal-late 1s ease-in-out 120ms infinite;
+}
+
+@keyframes senal-aparece {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes senal-late {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* La misma idea sobre una tarjeta entera: la foto se apaga un poco y aparece el
+   punto. En una grilla de partidos el clic cae sobre la tarjeta, así que la
+   respuesta tiene que estar ahí y no en un rincón de la pantalla. */
+.velo-link {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-ground) 55%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.velo-link-activo {
+  visibility: visible;
+  animation: senal-aparece 200ms ease-out 120ms forwards;
+}
+
+/* Lo que se está trayendo mientras tanto: el bloque gris que ocupa el lugar de
+   lo que va a llegar. Late despacio para que se lea como "viniendo" y no como
+   un hueco roto. */
+.hueco {
+  background: var(--color-surface);
+  border-radius: 0.375rem;
+  animation: hueco-late 1.4s ease-in-out infinite;
+}
+
+@keyframes hueco-late {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Sin movimiento, la señal se muestra fija: sacar la animación no puede
+     significar sacar la respuesta al clic, que es justamente lo que faltaba. */
+  .senal-link-activa,
+  .velo-link-activo {
+    visibility: visible;
+    opacity: 1;
+    animation: none;
+  }
+  .hueco {
+    animation: none;
+  }
+}
+
+/* El contador del carrito cuando cambia de número.
+
+   Agregar una foto ya cambiaba el botón de la grilla, pero el carrito está en
+   la otra punta de la pantalla y ese cambio no se veía: quedaba la duda de si
+   la foto había entrado. Un salto corto en el número lo confirma sin decir
+   nada. Es `transform`, así que no obliga a recalcular la página. */
+@keyframes entra-contador {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.entra-contador {
+  animation: entra-contador 260ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entra-contador {
+    animation: none;
+  }
+}
+
+/* La misma espera, latiendo sobre algo que ya está en pantalla en vez de
+   sumarle un punto al lado. La usa el botón del carrito, que es un ícono solo:
+   ahí el punto reservaba su lugar y descentraba el ícono. Mismo retraso de
+   120ms que las otras señales, por el mismo motivo: si la pantalla ya estaba
+   traída, no se llega a ver. */
+.late-esperando {
+  animation: senal-late 1s ease-in-out 120ms infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .late-esperando {
+    animation: none;
+    opacity: 0.6;
+  }
+}

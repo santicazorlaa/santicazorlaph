@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { Aparecer } from "./aparecer";
+import { VeloDeLink } from "./senal-link";
 import { useMemo, useState } from "react";
 
 export type PartidoEnLista = {
@@ -97,6 +98,10 @@ export function ListaPartidos({ partidos }: { partidos: PartidoEnLista[] }) {
                     Actualizado {evento.actualizado}
                   </span>
                 )}
+                {/* El clic cae sobre la foto, así que la respuesta va acá y no
+                    en un rincón: la tarjeta se apaga un poco mientras el
+                    partido viene en camino. Sólo se ve si la espera es real. */}
+                <VeloDeLink />
               </div>
               <div className="p-4">
                 {evento.category && (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { BotonEnvio } from "./boton-envio";
 import { calcular, type Escalon } from "@/lib/descuentos";
 import { precio } from "@/lib/format";
 
@@ -56,13 +57,13 @@ export function PrecioPartido({
             className="w-40 bg-surface border border-line rounded-md px-3 py-2.5 cifra focus:border-accent outline-none"
           />
         </div>
-        <button
-          type="submit"
+        <BotonEnvio
+          enviando="Guardando"
           disabled={!sinGuardar}
-          className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-40"
+          className="bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 hover:opacity-90 inline-flex items-center"
         >
           Guardar
-        </button>
+        </BotonEnvio>
       </form>
 
       {valido && escalones.length > 0 && (

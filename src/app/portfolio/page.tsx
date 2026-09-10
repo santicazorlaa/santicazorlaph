@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { GrillaPortfolio } from "@/components/grilla-portfolio";
+import { SenalDeLink } from "@/components/senal-link";
 import { leerContenido, linkWhatsapp } from "@/lib/contenido";
 import { db } from "@/lib/db";
 import { publicUrl } from "@/lib/storage";
@@ -34,8 +35,12 @@ export default async function PortfolioPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-16">
-      <Link href="/" className="etiqueta text-muted hover:text-accent transition-colors">
+      <Link
+        href="/"
+        className="etiqueta text-muted hover:text-accent transition-colors inline-flex items-center"
+      >
         ← Volver
+        <SenalDeLink />
       </Link>
 
       <h1 className="titulo text-4xl sm:text-6xl mt-6 mb-3">Lo mejor de mi trabajo</h1>

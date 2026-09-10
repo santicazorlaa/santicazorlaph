@@ -3,6 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { BotonEnvio } from "@/components/boton-envio";
+
 import { EncuadrarTapa } from "@/components/encuadrar-tapa";
 import { SubirImagen } from "@/components/subir-imagen";
 import { isAdmin } from "@/lib/auth";
@@ -106,12 +108,12 @@ function Campo({
 
 function Guardar() {
   return (
-    <button
-      type="submit"
-      className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 justify-self-start hover:opacity-90 transition-opacity"
+    <BotonEnvio
+      enviando="Guardando"
+      className="bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 justify-self-start hover:opacity-90 inline-flex items-center"
     >
       Guardar
-    </button>
+    </BotonEnvio>
   );
 }
 
@@ -188,12 +190,13 @@ export default async function ContenidoPage({ searchParams }: Props) {
         {c["hero.fotoKey"] && (
           <form action={borrarImagen} className="mt-3">
             <input type="hidden" name="clave" value="hero.fotoKey" />
-            <button
-              type="submit"
-              className="etiqueta text-[0.7rem] text-muted hover:text-danger transition-colors"
+            <BotonEnvio
+              enviando="Sacándola…"
+              variante="discreto"
+              className="text-[0.7rem] text-muted hover:text-danger"
             >
               Sacar la foto de fondo
-            </button>
+            </BotonEnvio>
           </form>
         )}
       </Seccion>
@@ -245,12 +248,13 @@ export default async function ContenidoPage({ searchParams }: Props) {
         {c["sobre.fotoKey"] && (
           <form action={borrarImagen} className="mt-3">
             <input type="hidden" name="clave" value="sobre.fotoKey" />
-            <button
-              type="submit"
-              className="etiqueta text-[0.7rem] text-muted hover:text-danger transition-colors"
+            <BotonEnvio
+              enviando="Sacándola…"
+              variante="discreto"
+              className="text-[0.7rem] text-muted hover:text-danger"
             >
               Sacar mi foto
-            </button>
+            </BotonEnvio>
           </form>
         )}
       </Seccion>

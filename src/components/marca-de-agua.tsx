@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { BotonEnvioNativo } from "./boton-envio-nativo";
 import { DESCRIPCION_SLOT, NOMBRE_SLOT, SLOTS, type Slot } from "@/lib/marca-slots";
 
 type Estado = { slot: Slot; propia: boolean; filename: string | null };
@@ -142,24 +143,25 @@ export function MarcaDeAgua({
                   required
                   className="block w-full text-xs text-muted file:mr-3 file:rounded file:border-0 file:bg-surface-2 file:px-3 file:py-2 file:text-ink file:text-xs file:uppercase file:tracking-wider"
                 />
-                <button
-                  type="submit"
-                  className="etiqueta bg-accent-solid text-accent-ink rounded py-2.5 hover:opacity-90 transition-opacity"
+                <BotonEnvioNativo
+                  enviando="Subiendo"
+                  className="bg-accent-solid text-accent-ink rounded py-2.5 hover:opacity-90 inline-flex items-center justify-center"
                 >
                   Subir
-                </button>
+                </BotonEnvioNativo>
               </form>
 
               {propia && (
                 <form method="POST" action="/api/admin/marca">
                   <input type="hidden" name="slot" value={slot} />
                   <input type="hidden" name="accion" value="borrar" />
-                  <button
-                    type="submit"
-                    className="etiqueta text-muted hover:text-danger transition-colors"
+                  <BotonEnvioNativo
+                    enviando="Volviendo…"
+                    variante="discreto"
+                    className="text-muted hover:text-danger"
                   >
                     Volver a mi logo
-                  </button>
+                  </BotonEnvioNativo>
                 </form>
               )}
             </div>
@@ -221,13 +223,14 @@ export function MarcaDeAgua({
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-4">
-          <button
-            type="submit"
-            disabled={!sinGuardar}
-            className="etiqueta bg-accent-solid text-accent-ink rounded px-6 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-40"
+          <BotonEnvioNativo
+            enviando="Guardando"
+            className={`bg-accent-solid text-accent-ink rounded px-6 py-2.5 hover:opacity-90 inline-flex items-center ${
+              sinGuardar ? "" : "opacity-40 pointer-events-none"
+            }`}
           >
             Guardar intensidad
-          </button>
+          </BotonEnvioNativo>
           {sinGuardar ? (
             <span className="text-xs text-muted">
               Sin guardar. Sólo cambia las fotos que subas después.

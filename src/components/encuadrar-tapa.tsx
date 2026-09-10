@@ -286,9 +286,11 @@ function Editor({
             type="button"
             disabled={guardando || !medidas}
             onClick={guardar}
-            className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-3 hover:opacity-90 transition-opacity disabled:opacity-50"
+            aria-busy={guardando}
+            className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-3 hover:opacity-90 transition-[opacity,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 disabled:cursor-progress inline-flex items-center"
           >
-            {guardando ? "Guardando…" : "Guardar la tapa"}
+            {guardando ? "Guardando" : "Guardar la tapa"}
+            {guardando && <span aria-hidden className="senal-link senal-link-activa" />}
           </button>
           <button
             type="button"

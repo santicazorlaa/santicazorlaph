@@ -29,9 +29,10 @@ export function DownloadButton({ token, photoId }: { token: string; photoId: str
     <button
       onClick={descargar}
       disabled={estado === "pidiendo"}
-      className="etiqueta text-[0.65rem] bg-accent-solid text-accent-ink rounded px-3 py-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+      aria-busy={estado === "pidiendo"}
+      className="etiqueta text-[0.65rem] bg-accent-solid text-accent-ink rounded px-3 py-1.5 hover:opacity-90 transition-[opacity,transform] duration-150 ease-out active:scale-95 motion-reduce:active:scale-100 disabled:opacity-50 disabled:cursor-progress"
     >
-      {estado === "pidiendo" ? "…" : estado === "error" ? "Reintentar" : "Descargar"}
+      {estado === "pidiendo" ? "Buscando…" : estado === "error" ? "Reintentar" : "Descargar"}
     </button>
   );
 }

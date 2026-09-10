@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { BotonEnvio } from "./boton-envio";
 import { precio } from "@/lib/format";
 import {
   calcular,
@@ -161,13 +162,13 @@ export function DescuentosPanel({
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-4">
-          <button
-            type="submit"
+          <BotonEnvio
+            enviando="Guardando"
             disabled={!sinGuardar}
-            className="etiqueta bg-accent-solid text-accent-ink rounded px-6 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-40"
+            className="bg-accent-solid text-accent-ink rounded px-6 py-2.5 hover:opacity-90 inline-flex items-center"
           >
             Guardar descuentos
-          </button>
+          </BotonEnvio>
           {sinGuardar && (
             <span className="text-xs text-muted">
               Sin guardar. Cambia lo que paga el comprador apenas lo guardes.

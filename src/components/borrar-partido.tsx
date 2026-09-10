@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { BotonEnvio } from "./boton-envio";
 import { plural } from "@/lib/format";
 
 /**
@@ -111,13 +112,13 @@ export function BorrarPartido({
               </button>
               <form action={action}>
                 <input type="hidden" name="eventId" value={eventId} />
-                <button
-                  type="submit"
+                <BotonEnvio
+                  enviando="Borrando"
                   disabled={!puedeBorrar}
-                  className="etiqueta rounded-full px-5 py-2.5 bg-danger text-ground disabled:opacity-40 transition-opacity"
+                  className="rounded-full px-5 py-2.5 bg-danger text-ground inline-flex items-center"
                 >
                   Borrar definitivamente
-                </button>
+                </BotonEnvio>
               </form>
             </div>
           </div>

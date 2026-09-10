@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ClearCartOnPaid } from "@/components/clear-cart";
+import { SenalDeLink } from "@/components/senal-link";
 import { DownloadButton } from "@/components/download-button";
 import { db } from "@/lib/db";
 import { precio } from "@/lib/format";
@@ -104,9 +105,10 @@ export default async function CompraPage({ params }: Props) {
         <div className="mt-10">
           <Link
             href="/carrito"
-            className="etiqueta border border-line rounded-full px-6 py-3 hover:border-accent transition-colors inline-block"
+            className="etiqueta border border-line rounded-full px-6 py-3 hover:border-accent transition-colors inline-flex items-center"
           >
             Volver al carrito
+            <SenalDeLink />
           </Link>
         </div>
       )}

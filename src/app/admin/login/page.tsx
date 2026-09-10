@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { BotonEnvioNativo } from "@/components/boton-envio-nativo";
 import { isAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Ingresar", robots: { index: false } };
@@ -27,12 +28,12 @@ export default async function LoginPage({ searchParams }: Props) {
           className="w-full bg-surface border border-line rounded-md px-3 py-2.5 focus:border-accent outline-none"
         />
         {error && <p className="text-sm text-danger">Contraseña incorrecta.</p>}
-        <button
-          type="submit"
-          className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3"
+        <BotonEnvioNativo
+          enviando="Entrando"
+          className="w-full bg-accent-solid text-accent-ink rounded-md py-3 inline-flex items-center justify-center"
         >
           Entrar
-        </button>
+        </BotonEnvioNativo>
       </form>
     </div>
   );

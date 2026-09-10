@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { BotonEnvio } from "@/components/boton-envio";
+
 import { PrecioPartido } from "@/components/precio-partido";
 import { Uploader } from "@/components/uploader";
 import { leerEscalones } from "@/lib/ajustes";
@@ -217,16 +219,16 @@ export default async function AdminEventoPage({ params }: Props) {
             </Link>
           )}
           <form action={alternarPublicado}>
-            <button
-              type="submit"
-              className={`etiqueta rounded-full px-5 py-2.5 border transition-colors ${
+            <BotonEnvio
+              enviando={evento.published ? "Despublicando" : "Publicando"}
+              className={`rounded-full px-5 py-2.5 border inline-flex items-center ${
                 evento.published
                   ? "border-line text-muted hover:border-danger hover:text-danger"
                   : "bg-accent-solid text-accent-ink border-accent"
               }`}
             >
               {evento.published ? "Despublicar" : "Publicar"}
-            </button>
+            </BotonEnvio>
           </form>
         </div>
       </div>
@@ -277,12 +279,12 @@ export default async function AdminEventoPage({ params }: Props) {
                 className="w-40 bg-surface border border-line rounded-md px-3 py-2.5 tabular-nums focus:border-accent outline-none"
               />
             </div>
-            <button
-              type="submit"
-              className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 hover:opacity-90 transition-opacity"
+            <BotonEnvio
+              enviando="Guardando"
+              className="bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 hover:opacity-90 inline-flex items-center"
             >
               Guardar
-            </button>
+            </BotonEnvio>
           </form>
         </div>
 
@@ -348,22 +350,24 @@ export default async function AdminEventoPage({ params }: Props) {
                       ) : (
                         <form action={usarDePortada}>
                           <input type="hidden" name="photoId" value={photo.id} />
-                          <button
-                            type="submit"
-                            className="etiqueta text-[0.6rem] text-muted hover:text-accent transition-colors"
+                          <BotonEnvio
+                            enviando="Poniendo…"
+                            variante="discreto"
+                            className="text-[0.6rem] text-muted hover:text-accent"
                           >
                             Portada
-                          </button>
+                          </BotonEnvio>
                         </form>
                       )}
                       <form action={usarDeTapa}>
                         <input type="hidden" name="photoId" value={photo.id} />
-                        <button
-                          type="submit"
-                          className="etiqueta text-[0.6rem] text-muted hover:text-accent transition-colors"
+                        <BotonEnvio
+                          enviando="Poniendo…"
+                          variante="discreto"
+                          className="text-[0.6rem] text-muted hover:text-accent"
                         >
                           Tapa
-                        </button>
+                        </BotonEnvio>
                       </form>
                     </div>
                   </div>

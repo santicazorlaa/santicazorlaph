@@ -176,14 +176,15 @@ function Flecha({
     <form action={mover}>
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="hacia" value={hacia} />
-      <button
-        type="submit"
+      <BotonEnvio
+        enviando="…"
+        variante="discreto"
         disabled={desactivada}
         aria-label={hacia === "antes" ? "Mover antes" : "Mover después"}
-        className="w-8 h-8 grid place-items-center rounded border border-line text-muted con-mouse:hover:border-accent con-mouse:hover:text-ink transition-colors disabled:opacity-30 disabled:pointer-events-none"
+        className="w-8 h-8 grid place-items-center rounded border border-line text-muted con-mouse:hover:border-accent con-mouse:hover:text-ink"
       >
         {hacia === "antes" ? "↑" : "↓"}
-      </button>
+      </BotonEnvio>
     </form>
   );
 }

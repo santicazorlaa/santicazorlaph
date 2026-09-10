@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { Aparecer } from "./aparecer";
 import { useCart, type CartItem } from "./cart-context";
+import { SenalDeLink } from "./senal-link";
 import { EmpujeDescuento } from "./empuje-descuento";
+import { HuecoGrilla } from "./huecos";
 import { Lightbox } from "./lightbox";
 import type { PhotoDTO } from "@/lib/photos";
 import { precio } from "@/lib/format";
@@ -86,7 +88,12 @@ export function Gallery({
   const columnas = useColumnas();
   const [buscando, setBuscando] = useState(false);
   const [sinResultado, setSinResultado] = useState(false);
-  const filtrando = useRef(false);
+  // Si la grilla está mostrando el resultado de una búsqueda por código en vez
+  // de todas las fotos. Es estado y no un `useRef` porque de esto depende lo
+  // que se dibuja —el botón "Ver todas" y el de "Cargar más"—, y leer un ref
+  // durante el render es justo lo que React no garantiza: los doce avisos de
+  // lint que arrastraba este archivo eran todos por eso.
+  const [filtrando, setFiltrando] = useState(false);
 
   const toItem = useCallback(
     (photo: PhotoDTO): CartItem => ({
@@ -119,7 +126,7 @@ export function Gallery({
     e.preventDefault();
     const q = codigo.trim().toUpperCase().replace(/^#/, "");
     if (!q) {
-      filtrando.current = false;
+      setFiltrando(false);
       setSinResultado(false);
       setPhotos(initialPhotos);
       return;
@@ -131,7 +138,7 @@ export function Gallery({
         `/api/eventos/${eventSlug}/fotos?codigo=${encodeURIComponent(q)}`,
       );
       const data = (await res.json()) as { photos: PhotoDTO[] };
-      filtrando.current = true;
+      setFiltrando(true);
       setPhotos(data.photos);
       setSinResultado(data.photos.length === 0);
     } finally {
@@ -151,7 +158,7 @@ export function Gallery({
     return () => window.removeEventListener("keydown", onKey);
   }, [openIndex, photos.length]);
 
-  const quedanPorCargar = !filtrando.current && photos.length < totalPhotos;
+  const quedanPorCargar = !filtrando && photos.length < totalPhotos;
 
   return (
     <section className="py-8">
@@ -171,15 +178,15 @@ export function Gallery({
           <button
             type="submit"
             disabled={buscando}
-            className="etiqueta border border-line rounded-md px-4 hover:border-accent transition-colors disabled:opacity-50"
+            className="etiqueta border border-line rounded-md px-4 hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 disabled:opacity-50 disabled:cursor-progress"
           >
-            {buscando ? "Buscando" : "Buscar"}
+            {buscando ? "Buscando…" : "Buscar"}
           </button>
-          {filtrando.current && (
+          {filtrando && (
             <button
               type="button"
               onClick={() => {
-                filtrando.current = false;
+                setFiltrando(false);
                 setCodigo("");
                 setSinResultado(false);
                 setPhotos(initialPhotos);
@@ -235,11 +242,15 @@ export function Gallery({
                     />
                   </button>
 
+                  {/* Se hunde al tocarlo. El texto ya cambiaba, pero el dedo
+                      tapa el botón justo cuando cambia: el que aprieta en el
+                      celular no ve nada. El hundido se siente igual con el
+                      dedo encima. */}
                   <button
                     type="button"
                     onClick={() => cart.toggle(toItem(photo))}
                     aria-pressed={enCarrito}
-                    className={`absolute inset-x-2 bottom-2 etiqueta rounded px-2 py-1.5 transition-opacity ${
+                    className={`absolute inset-x-2 bottom-2 etiqueta rounded px-2 py-1.5 transition-[opacity,transform,background-color] duration-150 ease-out active:scale-[0.96] motion-reduce:active:scale-100 ${
                       enCarrito
                         ? "bg-accent-solid text-accent-ink"
                         : "bg-ground/80 text-ink backdrop-blur-sm con-mouse:opacity-0 con-mouse:group-hover:opacity-100 con-mouse:focus-visible:opacity-100"
@@ -259,14 +270,26 @@ export function Gallery({
         ))}
       </div>
 
+      {/* Mientras vienen, se dibujan sus huecos abajo de las que ya están. La
+          palabra "Cargando" sola no alcanza: el botón está al pie y el que lo
+          aprieta se queda mirando una grilla que no se mueve. Los huecos dicen
+          dónde van a aparecer. */}
+      {loading && (
+        <div className="mt-3">
+          <HuecoGrilla cantidad={8} />
+        </div>
+      )}
+
       {quedanPorCargar && (
         <div className="mt-8 text-center">
           <button
             onClick={cargarMas}
             disabled={loading}
-            className="etiqueta border border-line rounded-full px-8 py-3 hover:border-accent transition-colors disabled:opacity-50"
+            aria-busy={loading}
+            className="etiqueta border border-line rounded-full px-8 py-3 hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 disabled:cursor-progress inline-flex items-center"
           >
-            {loading ? "Cargando…" : "Cargar más fotos"}
+            {loading ? "Trayendo más fotos" : "Cargar más fotos"}
+            {loading && <span aria-hidden className="senal-link senal-link-activa" />}
           </button>
         </div>
       )}
@@ -286,7 +309,10 @@ export function Gallery({
             <span className="opacity-60">·</span>
             <span className="cifra">{precio(cart.total)}</span>
             <span className="opacity-60">·</span>
-            <span>Ir al carrito</span>
+            <span className="flex items-center">
+              Ir al carrito
+              <SenalDeLink />
+            </span>
           </Link>
         </div>
       )}

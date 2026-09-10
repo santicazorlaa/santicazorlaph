@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { useCart } from "./cart-context";
+import { SenalDeLink } from "./senal-link";
 import { plural, precio } from "@/lib/format";
 import { EmpujeDescuento } from "./empuje-descuento";
 
@@ -24,9 +25,10 @@ export function CartView() {
         <p className="text-muted mb-6">No agregaste ninguna foto todavía.</p>
         <Link
           href="/"
-          className="etiqueta border border-line rounded-full px-6 py-3 hover:border-accent transition-colors inline-block"
+          className="etiqueta border border-line rounded-full px-6 py-3 hover:border-accent transition-colors inline-flex items-center"
         >
           Ver los partidos
+          <SenalDeLink />
         </Link>
       </div>
     );
@@ -91,7 +93,7 @@ export function CartView() {
                   </div>
                   <button
                     onClick={() => cart.remove(item.photoId)}
-                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-ground/85 backdrop-blur-sm text-muted hover:text-danger transition-colors grid place-items-center text-lg leading-none"
+                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-ground/85 backdrop-blur-sm text-muted hover:text-danger transition-[color,transform] duration-150 ease-out active:scale-90 motion-reduce:active:scale-100 grid place-items-center text-lg leading-none"
                     aria-label={`Quitar la foto ${item.code}`}
                   >
                     ×
@@ -207,12 +209,18 @@ export function CartView() {
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
+          {/* El más largo de todos los botones del sitio: crea la orden acá y
+              después redirige a MercadoPago, así que pueden pasar varios
+              segundos con la pantalla quieta. El punto que late es lo que
+              sostiene esa espera. */}
           <button
             type="submit"
             disabled={enviando}
-            className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 con-mouse:hover:opacity-90 active:scale-[0.98] transition-[opacity,transform] duration-150 ease-out disabled:opacity-50 motion-reduce:transition-none"
+            aria-busy={enviando}
+            className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 con-mouse:hover:opacity-90 active:scale-[0.98] motion-reduce:active:scale-100 transition-[opacity,transform] duration-150 ease-out disabled:opacity-50 disabled:cursor-progress inline-flex items-center justify-center"
           >
-            {enviando ? "Abriendo el pago…" : "Pagar con MercadoPago"}
+            {enviando ? "Abriendo el pago" : "Pagar con MercadoPago"}
+            {enviando && <span aria-hidden className="senal-link senal-link-activa" />}
           </button>
         </form>
 

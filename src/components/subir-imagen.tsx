@@ -113,9 +113,11 @@ export function SubirImagen({
         type="button"
         disabled={estado === "subiendo"}
         onClick={() => input.current?.click()}
-        className="etiqueta border border-line rounded-md px-5 py-2.5 con-mouse:hover:border-accent transition-colors disabled:opacity-50"
+        aria-busy={estado === "subiendo"}
+        className="etiqueta border border-line rounded-md px-5 py-2.5 con-mouse:hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 disabled:cursor-progress inline-flex items-center"
       >
-        {estado === "subiendo" ? "Subiendo…" : actual ? "Cambiar imagen" : "Elegir imagen"}
+        {estado === "subiendo" ? "Subiendo" : actual ? "Cambiar imagen" : "Elegir imagen"}
+        {estado === "subiendo" && <span aria-hidden className="senal-link senal-link-activa" />}
       </button>
 
       {error && <p className="text-sm text-danger mt-2">{error}</p>}
