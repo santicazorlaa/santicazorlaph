@@ -255,22 +255,174 @@ no reciclando. Sube por el mismo camino en dos pasos que las fotos de un partido
 —el original nunca pasa por el servidor— y guarda su original en el bucket
 privado para poder rehacer las versiones publicadas.
 
-**La cinta se acerca bajo el mouse en vez de frenarse.** La foto que está abajo
-del puntero crece y las vecinas un poco menos, cada vez menos con la distancia:
-responde sin apagar el movimiento, que era lo que hacía la pausa. El cálculo
-toca los estilos directamente, sin pasar por el estado de React —corre en cada
-cuadro— y lee todas las posiciones antes de escribir ninguna escala, porque
-mezclar lecturas y escrituras obliga al navegador a recalcular la página una vez
-por foto. Se pinta en el propio evento del puntero además de por cuadro, así el
-efecto no depende de que el próximo cuadro llegue a tiempo.
+**La cinta la mueve el JavaScript, y la animación de CSS quedó de respaldo.**
+Antes el desplazamiento era CSS puro —más barato, corre sin molestar al resto de
+la página—. Se cambió porque el desplazamiento, la lupa y el arrastre con el
+dedo tienen que salir de la misma cuenta: si el CSS corre la cinta por su lado y
+el JavaScript acomoda las fotos por el suyo, agarrar la cinta con la mano pelea
+contra la animación en vez de reemplazarla. La clase `cinta-portfolio` sigue
+puesta en el HTML que manda el servidor y el motor se la saca al arrancar, así
+que **sin JavaScript la cinta se mueve igual**, como siempre.
+
+El motor está en `cinta-portfolio.tsx`, con las cuentas separadas en
+`src/lib/fisheye.ts` (la lupa) y `src/lib/arrastre.ts` (la mano). Ninguno lleva
+`server-only`: es aritmética pura y eventos del navegador, sin nada del servidor
+adentro.
+
+**La cinta se acerca bajo el mouse en vez de frenarse, y las vecinas se corren
+para hacerle lugar.** La foto bajo el puntero crece y las de al lado un poco
+menos, cada vez menos con la distancia: responde sin apagar el movimiento, que
+era lo que hacía la pausa. Son dos cuentas distintas y las dos salen de la misma
+campana: **cuánto crece** cada una es la campana misma; **cuánto se corre** es su
+integral, que es la función error (`erf`). Antes sólo estaba la primera y las
+fotos se montaban unas sobre otras al crecer; por eso el acercamiento tenía que
+quedarse corto, y ahora puede ser el doble.
+
+**El aire de arriba y abajo de la cinta sale del acercamiento.** La foto crece
+para los cuatro lados, no sólo a los costados: si el marco no tiene lugar para
+lo que crece a lo alto, el borde le corta la cabeza y los pies justo a la foto
+que se está mirando. El `paddingBlock` de la fila se calcula del mismo número
+que la lupa (`--alto-cinta * ACERCAMIENTO / 2`), así que están atados: subir el
+acercamiento agranda el aire solo. Pasó una vez —el acercamiento se duplicó y el
+aire quedó con la medida vieja— y por eso ahora es una cuenta y no un número
+puesto a mano.
+
+**El empuje está calculado, no elegido a ojo.** Es el único número de todo esto
+que no se puede tantear: si se queda corto las fotos se montan y si se pasa
+salen disparadas. `empujeSinSolapes()` lo deriva del ancho de las fotos, de qué
+tan apretadas están y del ancho de la lente —la cuenta está escrita ahí—, así
+que sale bien solo en cualquier tamaño de pantalla. El componente del que salió
+esta cinta usaba un número fijo, y con él las fotos se montaban unos treinta
+píxeles.
+
+**El motor mide una sola vez.** Guarda dónde nace cada foto en la fila y cuánto
+mide, y después cada cuadro es sólo aritmética. La versión anterior le
+preguntaba al navegador la posición de cada foto en cada cuadro, que lo obliga a
+recalcular la página treinta veces por cuadro. Se vuelve a medir sólo si cambia
+el tamaño de la ventana, porque el alto de las fotos cambia por breakpoint y con
+él cambia todo lo demás.
+
+**El desplazamiento se escribe contra la posición que la foto ya tiene en la
+fila**, no contra el principio de la cinta. Por eso, con la cinta quieta en
+cero, el motor no escribe nada y lo que se ve es exactamente lo que mandó el
+servidor: no hay salto al hidratar.
+
+**Con la preferencia de menos movimiento, el motor arranca igual.** La cinta no
+se desplaza sola y no hay lupa —eso es movimiento que nadie pidió—, pero el
+arrastre queda, porque no es movimiento gratuito sino la respuesta a la propia
+mano; eso sí, sin inercia, así se mueve lo que la mano la movió y ni un píxel
+más. Un tiempo hubo ahí un `return` que no arrancaba el motor en absoluto, y eso
+dejaba la cinta completamente muerta: no se movía, no respondía al puntero y
+tampoco se podía recorrer, porque el `overflow-hidden` del marco tapaba el
+scroll que el CSS dejaba de respaldo. Media docena de fotos congeladas y sin
+salida. **Al tocar esta parte, probarla con la preferencia puesta.**
+
+**Con la cinta fuera de pantalla el bucle se apaga entero.** En la portada la
+cinta está bien abajo: sin esto, todo el rato que alguien pasa leyendo arriba
+serían sesenta cuadros por segundo calculando algo que nadie ve.
+
+**El puntero se captura recién cuando el gesto se confirma como arrastre, no
+al apoyar el dedo.** Es la trampa más cara de toda esta parte: capturando en el
+`pointerdown`, el `click` que viene después ya no le llega al botón de la foto
+—se lo queda la cinta, que es quien capturó— y **tocar una foto dejaba de
+abrirla**. Cuesta encontrarlo porque un `.click()` disparado por código se
+saltea todo eso y anda perfecto: sólo falla el clic de una mano de verdad. Así
+que la captura se pide en el primer `pointermove` que pasa el umbral, que es
+además cuando sirve: para que el gesto siga siendo nuestro aunque el dedo se
+vaya de la cinta. **Si algo de esto se toca, hay que probarlo clickeando de
+verdad, no con `.click()`.**
+
+**La cinta se puede arrastrar con el dedo o con el mouse, y sigue de largo al
+soltar.** Frena por fricción y espera un segundo antes de volver a andar sola,
+porque sin esa pausa arranca encima del dedo que la acaba de acomodar. Un tirón
+no abre ninguna foto: por debajo de seis píxeles de recorrido es un toque, por
+encima es un arrastre. Va con Pointer Events —un solo juego de eventos para
+dedo, mouse y lápiz— y el marco lleva `touch-action: pan-y`, que le dice al
+navegador "el movimiento horizontal lo manejo yo, el vertical es tuyo": con eso
+se puede arrastrar la cinta de costado y seguir scrolleando la página con el
+mismo dedo.
+
+**La foto vuela entre la cinta y el visor en vez de aparecer en el centro.** Es
+la técnica que se llama FLIP y está en `vuelo-foto.tsx`. El recorrido es lo que
+dice *cuál* de todas las fotos se abrió, que en una cinta en movimiento no es
+obvio. Tres decisiones que importan:
+
+- **Al cerrar, el destino se relee en cada cuadro.** La cinta se pone a andar de
+  nuevo apenas empieza el cierre —a propósito—, así que la tarjeta a la que hay
+  que volver se está moviendo. Esto es lo único que no se puede hacer con una
+  transición de CSS, que necesita saber el punto final desde el principio.
+- **Vuelve a la copia visible más cercana al centro, no a la tarjeta que se
+  tocó.** Esa puede haberse ido de pantalla mientras la foto estaba abierta.
+  Como todas las copias muestran la misma imagen, volver a cualquiera es igual
+  de cierto. Y si **ninguna** se ve —una vuelta de la cinta es varias veces más
+  ancha que la pantalla, así que es lo normal—, la foto se apaga en el lugar en
+  vez de irse hacia un punto fuera de la pantalla, que se leería como que se
+  escapó. El corte de "se ve" va bajo a propósito, un octavo de la foto: volver
+  a una medio salida sigue siendo mejor que apagarse en el aire, porque se
+  entiende adónde fue. Con un corte de un tercio, la mitad de los cierres
+  terminaban sin vuelo y esa mitad se veía como que la foto se esfumaba.
+- **Mientras la foto está afuera, su lugar en la cinta queda vacío.** La
+  tarjeta se esconde al abrir y se devuelve recién cuando la foto terminó de
+  volver. Sin esto se ven las dos a la vez —la que vuela y la que sigue en la
+  fila—, y eso es lo que se lee como un parpadeo: dos copias de la misma foto,
+  una moviéndose y otra quieta. En el escritorio era peor, porque al abrir se
+  apaga la lupa y la de la fila se desinflaba justo mientras la otra crecía. Va
+  con `visibility` y no con `opacity` porque no cambia el lugar que ocupa: el
+  vuelo de vuelta le sigue preguntando dónde está, cuadro a cuadro.
+- **A qué copia vuelve se decide una sola vez, al empezar el cierre.** Lo que se
+  relee en cada cuadro es dónde está esa copia, que es lo que se mueve. Si se
+  recalculara cuál, un empate entre dos copias la haría saltar de una a la otra
+  en pleno viaje.
+- **El relevo nunca puede dejar un instante sin foto.** Es *la* regla del
+  vuelo, y es la que costó tres intentos. En este baile hay tres fotos que se
+  pasan la posta —la tarjeta de la cinta, la capa que vuela y la foto del
+  visor—, y en cada cambio de mano hay que **destapar la que entra antes de
+  tapar la que sale**. Al revés queda un cuadro con ninguna a la vista, y
+  dieciséis milésimas de segundo en negro se ven perfectamente: se lee como si
+  la imagen bajara a opacidad cero y volviera. Los tres relevos:
+  - **La capa aparece antes de que se escondan las otras.** Un `<img>` recién
+    puesto en la página no pinta hasta que el navegador lo decodifica, aunque el
+    archivo ya esté en su memoria. Así que la capa avisa cuando dibujó su primer
+    cuadro, y recién ahí se esconden la tarjeta (al abrir) o la foto del visor
+    (al cerrar). Como la capa arranca justo encima de la que reemplaza, la
+    superposición de un cuadro no se ve.
+  - **Lo de abajo se destapa al aterrizar, no cuando la capa termina de irse.**
+    La capa se queda unos 110ms apagándose sobre el destino, y ese apagado tiene
+    que caer encima de algo que ya se vea: al abrir, la foto del visor; al
+    cerrar, la tarjeta de la cinta. Destapando al final, la capa llegaba a
+    opacidad cero sobre un hueco.
+  - **El visor se desmonta al aterrizar, mientras la capa todavía tapa.** Su
+    fondo desenfocado es lo más caro de sacar, y ese ratito de apagado es el que
+    tapa el momento.
+- **Las flechas de anterior y siguiente no se ven en el celular.** La pantalla
+  es angosta y caen justo encima de la foto, tapándole los costados. Ahí se pasa
+  de foto cerrando y abriendo otra.
+- **De ida vuela la miniatura y de vuelta la grande.** La miniatura ya está
+  cargada, así que el vuelo arranca en el mismo instante del clic; con la grande,
+  un clic sobre una foto todavía sin descargar volaría un rectángulo vacío. Al
+  cerrar es al revés: la grande ya estuvo en pantalla todo ese rato, y cambiarla
+  por la chica se vería como un bajón de calidad en el primer cuadro.
+
+El vuelo es una interpolación pura de posición y tamaño porque las dos cajas
+tienen la misma proporción: en el portfolio nada se recorta, ni en la cinta ni
+en el visor. Si una recortara y la otra no, habría que interpolar además el
+encuadre.
+
+**El motor de la cinta se generalizó a fotos de anchos distintos.** El
+componente de referencia asumía tarjetas todas iguales y posicionaba cada una en
+`índice × paso`. Acá cada foto conserva su proporción y ninguna se recorta, así
+que las posiciones son acumuladas. Es la misma matemática; lo que no se puede es
+volver a asumir un ancho fijo sin romper esa regla del portfolio.
 
 **El `<noscript>` va dentro del `<body>`.** Suelto como hijo de `<html>` rompe
 la hidratación: ahí sólo pueden ir `head` y `body`.
 
 **La cinta del portfolio no lleva `will-change`.** Sería lo esperable para algo
-que se mueve, pero la pista mide varios miles de píxeles de ancho y dejarla
-permanentemente en una capa de la placa de video es reservar mucha memoria para
-nada; una animación de `transform` ya se compone sola. Sus fotos se cargan de
+que se mueve, pero son treinta y pico de fotos moviéndose a la vez y dejarlas a
+todas permanentemente en una capa de la placa de video es reservar mucha memoria
+para nada; una animación de `transform` ya se compone sola. Medido en
+desarrollo, la cinta con la lupa activa corre a la velocidad del monitor sin
+perder un solo cuadro, así que no hace falta. Sus fotos se cargan de
 entrada aunque estén fuera de pantalla —al revés de lo habitual— porque van a
 entrar solas en segundos y esperar a que sean visibles dejaría huecos blancos
 mientras avanza. Por eso el portfolio está acotado a 16 fotos: el tope es de
@@ -281,6 +433,50 @@ columna más corta mirando sólo las anteriores, así al traer más fotos las qu
 estaban caen en el mismo lugar. Si se dejara balancear las columnas al navegador
 (`columns` de CSS), cada "Cargar más" movería de lugar todo lo de arriba justo
 cuando el comprador lo está mirando.
+
+**Toda acción contesta enseguida, aunque el resultado tarde.** Es la regla que
+salió de que Santi sintiera el sitio "colgado": un botón que no cambia al
+apretarlo, o un cambio de pantalla sin ninguna marca, se vive como una demora
+aunque tarde exactamente lo mismo que antes. Nada de lo que sigue acelera nada;
+todo contesta. Son tres piezas:
+
+- **`loading.tsx` en cada pantalla que consulta la base** (la portada, el
+  partido, el carrito, la compra, el portfolio, los legales y todo el panel).
+  Con esto la pantalla cambia en el acto y muestra la silueta de lo que viene
+  —los bloques grises de `huecos.tsx`— mientras el servidor trabaja. Es lo que
+  más se nota de todo esto. **Un hueco tiene que tener la forma de lo que va a
+  llegar**: si es de cualquier tamaño, al entrar el contenido real todo salta de
+  lugar y se lee peor que una pantalla en blanco. Por eso los legales tienen su
+  propia espera y no la de la portada, que dibuja la foto grande del encabezado.
+- **`senal-link.tsx`** para el instante anterior, en tres formas: un punto que
+  late al lado del texto (`SenalDeLink`), un velo sobre la tarjeta entera
+  (`VeloDeLink`) o el propio contenido latiendo sin agregar nada
+  (`LatidoDeLink`). Usan `useLinkStatus` de Next, así que tienen que ir
+  **adentro** de un `<Link>`. Las tres arrancan invisibles y con 120ms de
+  retraso puesto en el CSS: si la pantalla ya estaba traída de antemano el
+  cambio es instantáneo y la señal no llega a verse, que es lo que corresponde.
+  **`SenalDeLink` reserva su lugar aunque no se vea** —si no, aparecería de la
+  nada y empujaría el texto—, así que dentro de una caja con el padding parejo
+  descentra lo que hay adentro. Ahí va `LatidoDeLink`, que no ocupa lugar.
+- **`boton-envio.tsx` y `boton-envio-nativo.tsx`** para los formularios. El
+  primero usa `useFormStatus` y sirve para las acciones de servidor; el segundo
+  escucha el evento de envío del formulario y es para los que van derecho a la
+  API (`method="POST" action="/api/..."`), donde React no se entera de nada y
+  `useFormStatus` devuelve siempre "quieto". El nativo **no** usa `disabled`:
+  apagar el botón dentro del mismo evento que lo envía puede llegar a impedir el
+  envío según el navegador, así que le saca el puntero y le baja la opacidad.
+
+Al sumar un botón o un link nuevo, la pregunta es qué muestra entre el clic y el
+resultado. Si la respuesta es "nada", falta la señal.
+
+**El carrito del encabezado es un ícono, no la palabra.** Un carrito se
+reconoce de un vistazo, que es lo que hace falta en una barra que está en todas
+las pantallas, y la caja le queda pareja de los dos lados: con la palabra
+adentro, el punto de espera le comía el lugar de un costado y el texto quedaba
+corrido. La palabra sigue estando en el `aria-label`, junto con cuántas fotos
+hay, para quien no ve el dibujo. El número al lado es lo único que cambia de
+ancho, y el saltito al cambiar es a propósito: es lo que confirma, desde la otra
+punta de la pantalla, que la foto entró.
 
 ## Cosas que muerden
 
@@ -360,6 +556,14 @@ prueba "CAT vs Lastenia", con fotos sintéticas, quedó despublicado — no se p
 borrar porque tiene fotos vendidas en órdenes de prueba, y el esquema protege eso
 a propósito.
 
+El 10 de septiembre de 2026 se le puso al sitio entero la señal de "ya te
+escuché": pantallas de espera con la forma de lo que viene, punto de espera en
+los links, y todos los botones y formularios contestando el clic. El mismo día
+se rehizo la cinta del portfolio con el motor nuevo: lupa con repulsión,
+arrastre con el dedo e inercia, y la foto volando entre la cinta y el visor.
+Las dos cosas están hechas y verificadas en local, **pero todavía no se
+publicaron**.
+
 En septiembre de 2026 se publicó además el sitio de fotógrafo: encabezado con
 foto encuadrable por pantalla, cómo funciona, quién soy, servicios para
 organizadores, portfolio propio con página aparte, WhatsApp y legales; el panel
@@ -398,9 +602,14 @@ Ya está todo publicado. Lo que queda:
 2. **Por qué se crearon seis partidos duplicados.** Ya se borraron, pero la
    causa sigue ahí: lo más probable es que el formulario de "Nuevo partido" no
    dé señal de que ya se envió y se pueda apretar dos veces.
-3. **La galería arrastra 12 avisos de lint** por leer un `useRef` durante el
-   render (`filtrando` en `src/components/gallery.tsx`). Es viejo, no rompe
-   nada, pero conviene limpiarlo.
+3. **Queda un solo aviso de lint**, en `cart-context.tsx`: el carrito lee el
+   `localStorage` dentro de un efecto y llama a `setState` ahí mismo. Es un caso
+   legítimo —leer un almacén del navegador al montar—, pero la regla nueva de
+   React lo marca igual. Arreglarlo bien es pasarlo a `useSyncExternalStore`, y
+   eso toca el carrito, que es lo más delicado del sitio: no vale la pena
+   hacerlo de apuro. Los 12 avisos de la galería, en cambio, ya no están:
+   `filtrando` pasó de `useRef` a estado, que era lo que correspondía porque de
+   eso depende lo que se dibuja.
 
 Sobre los descuentos, para tener presente: los porcentajes que eligió Santi
 (14 / 20 / 31 / 37) salen de pensar en **precios redondos por pack**, no en
@@ -415,29 +624,19 @@ mueven, así que conviene pasar por el panel después.
    y decidir qué pasa con la descarga de una orden devuelta. Todavía no pasó
    ninguna devolución.
 
-5. **El sitio se siente más lento que antes y no avisa que te escuchó.** Es lo
-   que pidió Santi el 10 de septiembre de 2026, para arrancar la próxima
-   sesión. Son dos cosas distintas y conviene no mezclarlas:
-
-   - **Lo que tarda de verdad.** Hay que medir antes de tocar: qué pantallas
-     tardan y en qué se va el tiempo. Sospechosos conocidos: `/compra/[token]`
-     le pregunta a MercadoPago antes de dibujar nada cuando la orden está
-     pendiente; el home es `force-dynamic` en varios lados y consulta la base
-     en cada visita; la cinta del portfolio carga sus fotos de entrada a
-     propósito; y las animaciones de aparición al scrollear se suman a todo lo
-     anterior.
-   - **Lo que se siente lento aunque no lo sea.** Un botón que no cambia al
-     apretarlo, o un cambio de página sin ninguna señal, se vive como el sitio
-     colgado aunque tarde lo mismo. Falta una señal de "ya te escuché" en cada
-     acción: el botón de pagar ya se deshabilita, pero agregar al carrito,
-     cargar más fotos, los formularios del panel y sobre todo la navegación
-     entre pantallas no muestran nada. Next tiene `useLinkStatus` para el
-     estado de un link y `loading.tsx` para lo que se está trayendo; revisar
-     la documentación en `node_modules/next/dist/docs/` antes de escribir,
-     como pide `AGENTS.md`.
-
-   Lo segundo se nota más que lo primero y cuesta menos: conviene empezar por
-   ahí y medir lo demás con números antes de cambiarlo.
+5. **Falta medir lo que tarda de verdad.** Santi dijo el 10 de septiembre de
+   2026 que el sitio se sentía más lento y que no avisaba que lo escuchó. Eran
+   dos cosas distintas. La segunda ya está hecha: todo el sitio contesta el
+   clic (ver "Toda acción contesta enseguida" más arriba). Queda la primera, y
+   **hay que medir antes de tocar nada**: qué pantallas tardan y en qué se va
+   el tiempo. Sospechosos conocidos: `/compra/[token]` le pregunta a
+   MercadoPago antes de dibujar nada cuando la orden está pendiente —eso ahora
+   al menos se ve, porque su pantalla de espera lo explica, pero sigue
+   tardando—; el home es `force-dynamic` en varios lados y consulta la base en
+   cada visita; la cinta del portfolio carga sus fotos de entrada a propósito.
+   El `layout.tsx` hace dos consultas antes de dibujar nada, y **eso ningún
+   `loading.tsx` lo tapa**: en la primera carga de una pantalla la navegación
+   espera a que el layout termine. Es el primer lugar donde mirar.
 
 6. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
    cuenta, aviso al jugador cuando se suben sus fotos, y la tarjeta de "pack
