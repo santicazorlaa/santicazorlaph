@@ -463,40 +463,26 @@ estaban caen en el mismo lugar. Si se dejara balancear las columnas al navegador
 (`columns` de CSS), cada "Cargar más" movería de lugar todo lo de arriba justo
 cuando el comprador lo está mirando.
 
-**Toda acción contesta enseguida, aunque el resultado tarde.** Es la regla que
-salió de que Santi sintiera el sitio "colgado": un botón que no cambia al
-apretarlo, o un cambio de pantalla sin ninguna marca, se vive como una demora
-aunque tarde exactamente lo mismo que antes. Nada de lo que sigue acelera nada;
-todo contesta. Son tres piezas:
+**REGLA OBLIGATORIA: Toda acción, filtro, botón, atajo o navegación debe dar respuesta visual inmediata.**
+La pantalla jamás puede quedarse estática ni parecer colgada entre la interacción del usuario y la respuesta del servidor. Cualquier cambio, mejora o funcionalidad nueva que se agregue al sitio DEBE respetar este principio sin excepciones:
 
-- **`loading.tsx` en cada pantalla que consulta la base** (la portada, el
-  partido, el carrito, la compra, el portfolio, los legales y todo el panel).
-  Con esto la pantalla cambia en el acto y muestra la silueta de lo que viene
-  —los bloques grises de `huecos.tsx`— mientras el servidor trabaja. Es lo que
-  más se nota de todo esto. **Un hueco tiene que tener la forma de lo que va a
-  llegar**: si es de cualquier tamaño, al entrar el contenido real todo salta de
-  lugar y se lee peor que una pantalla en blanco. Por eso los legales tienen su
-  propia espera y no la de la portada, que dibuja la foto grande del encabezado.
-- **`senal-link.tsx`** para el instante anterior, en tres formas: un punto que
-  late al lado del texto (`SenalDeLink`), un velo sobre la tarjeta entera
-  (`VeloDeLink`) o el propio contenido latiendo sin agregar nada
-  (`LatidoDeLink`). Usan `useLinkStatus` de Next, así que tienen que ir
-  **adentro** de un `<Link>`. Las tres arrancan invisibles y con 120ms de
-  retraso puesto en el CSS: si la pantalla ya estaba traída de antemano el
-  cambio es instantáneo y la señal no llega a verse, que es lo que corresponde.
-  **`SenalDeLink` reserva su lugar aunque no se vea** —si no, aparecería de la
-  nada y empujaría el texto—, así que dentro de una caja con el padding parejo
-  descentra lo que hay adentro. Ahí va `LatidoDeLink`, que no ocupa lugar.
-- **`boton-envio.tsx` y `boton-envio-nativo.tsx`** para los formularios. El
-  primero usa `useFormStatus` y sirve para las acciones de servidor; el segundo
-  escucha el evento de envío del formulario y es para los que van derecho a la
-  API (`method="POST" action="/api/..."`), donde React no se entera de nada y
-  `useFormStatus` devuelve siempre "quieto". El nativo **no** usa `disabled`:
-  apagar el botón dentro del mismo evento que lo envía puede llegar a impedir el
-  envío según el navegador, así que le saca el puntero y le baja la opacidad.
+- **Pestañas de filtrado y navegación de parámetros (`?filtro=...`, paginación, etc.):**
+  Usar `useTransition` y un componente cliente contenedor (como `PanelVentas`) para que:
+  1. El botón/pestaña seleccionada se active visualmente en el milisegundo en que se hace clic y muestre un pulso o señal de carga en curso.
+  2. Muestre un texto de estado ("Actualizando lista…", "Cargando pendientes…").
+  3. Atenúe suavemente la lista anterior (`opacity-35 pointer-events-none`) para que quede claro que se está renovando el contenido.
+- **Acciones y formularios de servidor (Server Actions):**
+  Usar SIEMPRE `BotonEnvio` con `useFormStatus` (por ejemplo en guardar contenido, borrar fotos, descartar carritos pendientes o limpiar abandonadas). El botón debe cambiar su texto a gerundio ("Guardando…", "Descartando…", "Limpiando órdenes…"), desactivarse para evitar dobles clics y mostrar el indicador de espera. El botón debe ser hijo directo del `<form>` correspondiente para que `useFormStatus` lo detecte.
+- **Formularios nativos a la API (`method="POST" action="/api/..."`):**
+  Usar SIEMPRE `BotonEnvioNativo` (como en "Cerrar sesión").
+- **Enlaces y botones de navegación (`<Link>`):**
+  Incluir `<SenalDeLink />` o `<LatidoDeLink>` dentro del `<Link>` para que aparezca la señal pulsante si la carga tarda más de 120ms.
+- **Atajos de teclado globales (como `Ctrl + Shift + A`):**
+  Mostrar un aviso visual flotante inmediato ("Abriendo panel admin…") apenas se presiona la combinación, para confirmar que el sistema escuchó el comando.
+- **Pantallas nuevas o con carga de datos:**
+  Crear siempre su respectivo `loading.tsx` con la silueta adecuada (`huecos.tsx`).
 
-Al sumar un botón o un link nuevo, la pregunta es qué muestra entre el clic y el
-resultado. Si la respuesta es "nada", falta la señal.
+Al sumar o tocar cualquier botón, enlace, filtro, atajo o formulario: la pregunta obligatoria es ¿qué muestra entre la interacción y el resultado? Si la respuesta es "nada", el cambio está incompleto.
 
 **El carrito del encabezado es un ícono, no la palabra.** Un carrito se
 reconoce de un vistazo, que es lo que hace falta en una barra que está en todas

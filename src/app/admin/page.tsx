@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { BotonEnvioNativo } from "@/components/boton-envio-nativo";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural, precio } from "@/lib/format";
@@ -61,12 +62,12 @@ export default async function AdminPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <h1 className="titulo text-4xl">Panel</h1>
         <form action="/api/admin/logout" method="POST">
-          <button
-            type="submit"
-            className="etiqueta text-xs border border-line rounded-full px-4 py-2 text-muted con-mouse:hover:border-accent con-mouse:hover:text-ink transition-colors"
+          <BotonEnvioNativo
+            enviando="Cerrando sesión…"
+            className="text-xs border border-line rounded-full px-4 py-2 text-muted con-mouse:hover:border-accent con-mouse:hover:text-ink transition-colors inline-flex items-center gap-1.5"
           >
             Cerrar sesión
-          </button>
+          </BotonEnvioNativo>
         </form>
       </div>
       <p className="text-sm text-muted mb-10">

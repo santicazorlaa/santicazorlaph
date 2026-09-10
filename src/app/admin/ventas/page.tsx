@@ -3,6 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { BotonEnvio } from "@/components/boton-envio";
+import { PanelVentas, type FiltroVenta } from "@/components/panel-ventas";
+import { SenalDeLink } from "@/components/senal-link";
 import { Venta } from "@/components/venta";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
@@ -85,7 +88,8 @@ export default async function VentasPage({ searchParams }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
 
   const { mail, filtro: filtroParam } = await searchParams;
-  const filtro = filtroParam === "pendientes" || filtroParam === "todas" ? filtroParam : "pagadas";
+  const filtro: FiltroVenta =
+    filtroParam === "pendientes" || filtroParam === "todas" ? filtroParam : "pagadas";
 
   const inicioDelMes = new Date();
   inicioDelMes.setDate(1);
@@ -135,13 +139,28 @@ export default async function VentasPage({ searchParams }: Props) {
     }),
   ]);
 
+  const botonLimpiar =
+    cantPendientes > 0 ? (
+      <form action={limpiarPendientesAntiguas}>
+        <BotonEnvio
+          enviando="Limpiando órdenes…"
+          variante="discreto"
+          className="text-xs text-muted hover:text-danger transition-colors flex items-center gap-1.5"
+          aria-label="Borra las órdenes pendientes con más de 24 horas que nunca se pagaron"
+        >
+          Limpiar abandonadas (+24hs)
+        </BotonEnvio>
+      </form>
+    ) : null;
+
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
       <Link
         href="/admin"
-        className="etiqueta text-muted hover:text-accent transition-colors inline-block mb-6"
+        className="etiqueta text-muted hover:text-accent transition-colors inline-flex items-center mb-6"
       >
         ← Panel
+        <SenalDeLink />
       </Link>
 
       <div className="flex flex-wrap items-baseline justify-between gap-4 mb-2">
@@ -171,117 +190,75 @@ export default async function VentasPage({ searchParams }: Props) {
         </p>
       )}
 
-      {/* Pestañas de filtrado para que los carritos pendientes no tapen las ventas reales */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-line pb-4">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/admin/ventas?filtro=pagadas"
-            className={`etiqueta text-xs rounded-full px-4 py-1.5 transition-colors ${
-              filtro === "pagadas"
-                ? "bg-accent-solid text-accent-ink font-medium"
-                : "border border-line text-muted hover:border-accent hover:text-fg"
-            }`}
-          >
-            Pagadas ({cantPagadas})
-          </Link>
-          <Link
-            href="/admin/ventas?filtro=pendientes"
-            className={`etiqueta text-xs rounded-full px-4 py-1.5 transition-colors ${
-              filtro === "pendientes"
-                ? "bg-accent-solid text-accent-ink font-medium"
-                : "border border-line text-muted hover:border-accent hover:text-fg"
-            }`}
-          >
-            Pendientes / Carritos ({cantPendientes})
-          </Link>
-          <Link
-            href="/admin/ventas?filtro=todas"
-            className={`etiqueta text-xs rounded-full px-4 py-1.5 transition-colors ${
-              filtro === "todas"
-                ? "bg-accent-solid text-accent-ink font-medium"
-                : "border border-line text-muted hover:border-accent hover:text-fg"
-            }`}
-          >
-            Todas ({cantPagadas + cantPendientes})
-          </Link>
-        </div>
-
-        {cantPendientes > 0 && (
-          <form action={limpiarPendientesAntiguas}>
-            <button
-              type="submit"
-              className="etiqueta text-xs text-muted hover:text-danger transition-colors"
-              title="Borra las órdenes pendientes con más de 24 horas que nunca se pagaron"
-            >
-              Limpiar abandonadas (+24hs)
-            </button>
-          </form>
-        )}
-      </div>
-
-      {ordenes.length === 0 ? (
-        <p className="text-muted border border-dashed border-line rounded-lg py-8 text-center">
-          {filtro === "pendientes"
-            ? "No hay órdenes pendientes en este momento."
-            : filtro === "pagadas"
-              ? "Todavía no hay ventas registradas."
-              : "No hay órdenes registradas."}
-        </p>
-      ) : (
-        <ul className="divide-y divide-line border-y border-line">
-          {ordenes.map((orden) => {
-            const puedeReenviar = orden.status === OrderStatus.PAID;
-            const esPendiente = orden.status === OrderStatus.PENDING;
-            const formId = `reenviar-${orden.id}`;
-            const discardFormId = `descartar-${orden.id}`;
-            return (
-              <div key={orden.id} className="contents">
-                {puedeReenviar && (
-                  <form id={formId} action={reenviarMail}>
-                    <input type="hidden" name="orderId" value={orden.id} />
-                  </form>
-                )}
-                {esPendiente && (
-                  <form id={discardFormId} action={descartarPendiente}>
-                    <input type="hidden" name="orderId" value={orden.id} />
-                  </form>
-                )}
-                <div className="relative group/fila">
-                  <Venta
-                    email={orden.email}
-                    buyerName={orden.buyerName}
-                    instagram={orden.instagram}
-                    fecha={`${fechaBreve(orden.createdAt)} ${horaDe(orden.createdAt)}`}
-                    cantidad={plural(orden.items.length, "foto", "fotos")}
-                    total={precio(orden.totalArs)}
-                    pagada={puedeReenviar}
-                    formId={puedeReenviar ? formId : null}
-                    fotos={orden.items.map((item) => ({
-                      id: item.photo.id,
-                      code: item.photo.code,
-                      thumbUrl: publicUrl(item.photo.thumbKey),
-                      partido: item.photo.event.title,
-                      precio: precio(item.priceArs),
-                    }))}
-                  />
-                  {esPendiente && (
-                    <div className="absolute right-0 top-3 flex items-center pr-2">
-                      <button
-                        type="submit"
-                        form={discardFormId}
-                        className="etiqueta text-[0.65rem] text-muted hover:text-danger transition-colors px-2 py-0.5"
-                        title="Descartar carrito abandonado"
-                      >
-                        Descartar
-                      </button>
-                    </div>
+      {/* Pestañas con feedback inmediato al cambiar filtro */}
+      <PanelVentas
+        filtroActual={filtro}
+        cantPagadas={cantPagadas}
+        cantPendientes={cantPendientes}
+        cantTotal={cantPagadas + cantPendientes}
+        botonLimpiar={botonLimpiar}
+      >
+        {ordenes.length === 0 ? (
+          <p className="text-muted border border-dashed border-line rounded-lg py-8 text-center">
+            {filtro === "pendientes"
+              ? "No hay órdenes pendientes en este momento."
+              : filtro === "pagadas"
+                ? "Todavía no hay ventas registradas."
+                : "No hay órdenes registradas."}
+          </p>
+        ) : (
+          <ul className="divide-y divide-line border-y border-line">
+            {ordenes.map((orden) => {
+              const puedeReenviar = orden.status === OrderStatus.PAID;
+              const esPendiente = orden.status === OrderStatus.PENDING;
+              const formId = `reenviar-${orden.id}`;
+              return (
+                <div key={orden.id} className="contents">
+                  {puedeReenviar && (
+                    <form id={formId} action={reenviarMail}>
+                      <input type="hidden" name="orderId" value={orden.id} />
+                    </form>
                   )}
+                  <div className="relative group/fila">
+                    <Venta
+                      email={orden.email}
+                      buyerName={orden.buyerName}
+                      instagram={orden.instagram}
+                      fecha={`${fechaBreve(orden.createdAt)} ${horaDe(orden.createdAt)}`}
+                      cantidad={plural(orden.items.length, "foto", "fotos")}
+                      total={precio(orden.totalArs)}
+                      pagada={puedeReenviar}
+                      formId={puedeReenviar ? formId : null}
+                      fotos={orden.items.map((item) => ({
+                        id: item.photo.id,
+                        code: item.photo.code,
+                        thumbUrl: publicUrl(item.photo.thumbKey),
+                        partido: item.photo.event.title,
+                        precio: precio(item.priceArs),
+                      }))}
+                    />
+                    {esPendiente && (
+                      <div className="absolute right-0 top-3 flex items-center pr-2">
+                        <form action={descartarPendiente}>
+                          <input type="hidden" name="orderId" value={orden.id} />
+                          <BotonEnvio
+                            enviando="Descartando…"
+                            variante="discreto"
+                            className="etiqueta text-[0.65rem] text-muted hover:text-danger transition-colors px-2 py-0.5 flex items-center gap-1"
+                            aria-label="Descartar carrito abandonado"
+                          >
+                            Descartar
+                          </BotonEnvio>
+                        </form>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </ul>
-      )}
+              );
+            })}
+          </ul>
+        )}
+      </PanelVentas>
     </div>
   );
 }

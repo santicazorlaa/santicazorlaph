@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { SenalDeLink } from "@/components/senal-link";
 import { linkInstagram, linkLinkedin, type Contenido } from "@/lib/contenido";
 import { siteName } from "@/lib/env";
 
@@ -102,10 +103,11 @@ export function SiteFooter({ contenido }: { contenido: Contenido }) {
         <span>© {new Date().getFullYear()} {siteName}</span>
         <Link
           href="/admin"
-          className="text-xs text-muted/60 con-mouse:hover:text-ink transition-colors"
+          className="text-xs text-muted/60 con-mouse:hover:text-ink transition-colors inline-flex items-center"
           title="Panel de administración (atajo: Ctrl+Shift+A)"
         >
           Administración
+          <SenalDeLink />
         </Link>
       </div>
     </footer>
