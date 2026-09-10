@@ -213,7 +213,8 @@ export function VueloDeFoto({
       src={url}
       alt=""
       aria-hidden
-      decoding="async"
+      loading="eager"
+      decoding="sync"
       className="fixed top-0 left-0 z-[60] pointer-events-none object-cover rounded"
       style={{
         width: desde.ancho,

@@ -400,7 +400,13 @@ obvio. Tres decisiones que importan:
     La capa se queda unos 110ms apagándose sobre el destino, y ese apagado tiene
     que caer encima de algo que ya se vea: al abrir, la foto del visor; al
     cerrar, la tarjeta de la cinta. Destapando al final, la capa llegaba a
-    opacidad cero sobre un hueco.
+    opacidad cero sobre un hueco. Para que esto se cumpla siempre —incluso la
+    primera vez que se abre una foto y la versión de 1600px todavía no terminó de
+    bajar de la red—, el visor muestra de fondo la miniatura (`foto.url`, ya
+    cargada), y la grande se sobrepone suavemente apenas llega; así jamás hay un
+    cuadro en blanco. Y en la cinta, todas las copias van con `loading="eager"` y
+    `decoding="sync"` (todas usan la misma URL ya descargada), para que al volver
+    a la cinta la tarjeta esté siempre pintada de antemano.
   - **El visor se desmonta al aterrizar, mientras la capa todavía tapa.** Su
     fondo desenfocado es lo más caro de sacar, y ese ratito de apagado es el que
     tapa el momento.
@@ -411,7 +417,9 @@ obvio. Tres decisiones que importan:
   cargada, así que el vuelo arranca en el mismo instante del clic; con la grande,
   un clic sobre una foto todavía sin descargar volaría un rectángulo vacío. Al
   cerrar es al revés: la grande ya estuvo en pantalla todo ese rato, y cambiarla
-  por la chica se vería como un bajón de calidad en el primer cuadro.
+  por la chica se vería como un bajón de calidad en el primer cuadro. Además, al
+  pasar el mouse por la foto en la cinta o al hacer clic se dispara la precarga de
+  la grande, para que llegue lo antes posible.
 
 El vuelo es una interpolación pura de posición y tamaño porque las dos cajas
 tienen la misma proporción: en el portfolio nada se recorta, ni en la cinta ni

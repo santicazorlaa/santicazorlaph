@@ -149,6 +149,10 @@ export function CintaPortfolio({ fotos }: { fotos: FotoDestacada[] }) {
     pista,
     avisarQueAnda: setMotorAndando,
     alAbrir: (indice, tarjeta) => {
+      // Precarga inmediata de la foto grande en cuanto se toca la miniatura:
+      const precarga = new Image();
+      precarga.src = fotos[indice].urlGrande;
+
       setAbierta(indice);
       setVueloPintado(false);
       setAterrizado(false);
@@ -340,6 +344,10 @@ export function CintaPortfolio({ fotos }: { fotos: FotoDestacada[] }) {
                 <button
                   type="button"
                   onClick={(e) => abrir(i, e.currentTarget.parentElement!)}
+                  onPointerEnter={() => {
+                    const img = new Image();
+                    img.src = foto.urlGrande;
+                  }}
                   tabIndex={vuelta > 0 ? -1 : undefined}
                   className="block w-full h-full rounded overflow-hidden border border-line bg-surface cursor-zoom-in"
                   aria-label={foto.titulo ? `Ver ${foto.titulo}` : "Ver la foto en grande"}
@@ -350,15 +358,13 @@ export function CintaPortfolio({ fotos }: { fotos: FotoDestacada[] }) {
                     alt={vuelta === 0 ? foto.titulo : ""}
                     className="w-full h-full object-cover pointer-events-none"
                     draggable={false}
-                    // La primera vuelta se carga entera aunque esté fuera de
-                    // pantalla. Es al revés de lo habitual, pero acá la foto que
-                    // está a la derecha del borde va a entrar sola en unos
-                    // segundos: si esperara a ser visible, la cinta mostraría
-                    // huecos blancos mientras avanza. Las vueltas de más sí van
-                    // perezosas, porque son las mismas direcciones y a esa
-                    // altura ya están en la memoria del navegador.
-                    loading={vuelta === 0 ? "eager" : "lazy"}
-                    decoding="async"
+                    // Todas las vueltas usan la misma URL que ya descargó la
+                    // primera; cargarlas de inmediato y decodificarlas de forma
+                    // síncrona garantiza que al aterrizar el vuelo de regreso
+                    // la tarjeta ya esté lista en pantalla, sin ningún cuadro en
+                    // blanco ni parpadeo.
+                    loading="eager"
+                    decoding="sync"
                   />
                 </button>
               </li>

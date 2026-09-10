@@ -8,6 +8,7 @@ export type FotoDeVisor = {
   ancho: number;
   alto: number;
   titulo: string;
+  url?: string;
 };
 
 /**
@@ -46,6 +47,11 @@ export function VisorPortfolio({
 }) {
   const foto = fotos[indice];
   const [fondoPuesto, setFondoPuesto] = useState(false);
+  const [grandeCargada, setGrandeCargada] = useState(false);
+
+  useEffect(() => {
+    setGrandeCargada(false);
+  }, [foto?.id]);
 
   // El fondo entra por transición, así que tiene que empezar apagado y
   // encenderse en el cuadro siguiente: montándolo ya encendido no habría nada
@@ -116,18 +122,48 @@ export function VisorPortfolio({
           que pasa al tocar *afuera*. */}
       <figure
         onClick={(e) => e.stopPropagation()}
-        className={`max-h-full relative ${fase === "abierto" ? "" : "invisible"}`}
+        className={`max-h-full flex flex-col items-center justify-center relative ${
+          fase === "abierto" ? "" : "invisible"
+        }`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          key={foto.id}
-          ref={refFoto}
-          src={foto.urlGrande}
-          alt={foto.titulo}
-          width={foto.ancho}
-          height={foto.alto}
-          className="visor-foto max-w-full max-h-[82vh] w-auto h-auto object-contain rounded"
-        />
+        <div className="relative max-h-[82vh] max-w-full">
+          {foto.url && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={foto.url}
+              alt=""
+              aria-hidden
+              width={foto.ancho}
+              height={foto.alto}
+              className="visor-foto max-w-full max-h-[82vh] w-auto h-auto object-contain rounded"
+            />
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            key={foto.id}
+            ref={(el) => {
+              if (refFoto) {
+                if (typeof refFoto === "function") refFoto(el);
+                else (refFoto as React.MutableRefObject<HTMLImageElement | null>).current = el;
+              }
+              if (el?.complete && el.naturalWidth > 0) {
+                setGrandeCargada(true);
+              }
+            }}
+            src={foto.urlGrande}
+            alt={foto.titulo}
+            width={foto.ancho}
+            height={foto.alto}
+            onLoad={() => setGrandeCargada(true)}
+            className={`visor-foto max-w-full max-h-[82vh] w-auto h-auto object-contain rounded ${
+              foto.url
+                ? `absolute inset-0 w-full h-full transition-opacity duration-300 ${
+                    grandeCargada ? "opacity-100" : "opacity-0"
+                  }`
+                : ""
+            }`}
+          />
+        </div>
         {foto.titulo && (
           <figcaption className="text-sm text-muted text-center mt-3">{foto.titulo}</figcaption>
         )}
