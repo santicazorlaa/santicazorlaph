@@ -14,14 +14,31 @@ export function SiteHeader() {
         <Link
           href="/"
           aria-label="Santi Cazorla · Fotografía Deportiva"
-          className="shrink-0 opacity-95 hover:opacity-100 transition-opacity"
+          className="shrink-0 opacity-95 hover:opacity-100 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md flex items-center"
         >
           {/* El logotipo completo es muy apaisado (6,6:1) y no entra en un
-              celular junto al carrito: ahí mostramos sólo el isotipo. */}
+              celular junto al carrito: ahí mostramos sólo el isotipo.
+              En tablet y escritorio, una escala calibrada (24px a 28px de alto)
+              mantiene el ancho visual en ~160px a 186px, dejando respirar la
+              barra de 64px sin invadir los enlaces de navegación. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/isotipo.svg" alt="" className="h-7 w-auto sm:hidden" />
+          <img
+            src="/isotipo.svg"
+            alt=""
+            width="46"
+            height="28"
+            draggable="false"
+            className="h-7 w-auto sm:hidden select-none"
+          />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="" className="hidden sm:block h-10 w-auto" />
+          <img
+            src="/logo.svg"
+            alt=""
+            width="186"
+            height="28"
+            draggable="false"
+            className="hidden sm:block sm:h-6 lg:h-7 w-auto select-none"
+          />
         </Link>
 
         {/* Cada link lleva su propio punto de espera. El encabezado está en
