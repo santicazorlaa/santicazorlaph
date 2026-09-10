@@ -316,20 +316,25 @@ escrito a mano, cuadro a cuadro. **El síntoma es cruel de encontrar**: en una
 máquina sin la preferencia puesta no pasa nunca, así que se ve en la Mac o el
 teléfono de quien la tiene y no en el navegador donde uno prueba.
 
-**Con la preferencia puesta, la foto tampoco vuela**: aparece en el visor y
-listo. El vuelo es movimiento; animarlo mientras la cinta se queda quieta por
-respetar la preferencia sería contradecirse. Y de paso saca de encima el relevo
-entre las tres fotos, que es donde se escondía el parpadeo.
+**La cinta es la única parte del sitio que ignora la preferencia de menos
+movimiento.** Se desplaza, se acerca bajo el puntero y la foto vuela igual,
+aunque el sistema pida lo contrario. Lo pidió Santi el 10 de septiembre de 2026,
+después de que se le explicara que quien activa esa preferencia muchas veces lo
+hace porque el movimiento le provoca mareo, y que la cinta es lo más grande que
+se mueve en el sitio. Queda anotado para que el que lo encuentre sepa que **no
+es un olvido**: el resto del sitio sí la respeta.
 
-**Con la preferencia de menos movimiento, el motor arranca igual.** La cinta no
-se desplaza sola y no hay lupa —eso es movimiento que nadie pidió—, pero el
-arrastre queda, porque no es movimiento gratuito sino la respuesta a la propia
-mano; eso sí, sin inercia, así se mueve lo que la mano la movió y ni un píxel
-más. Un tiempo hubo ahí un `return` que no arrancaba el motor en absoluto, y eso
-dejaba la cinta completamente muerta: no se movía, no respondía al puntero y
+Son dos lugares y hay que tocar los dos: el motor de `cinta-portfolio.tsx`, que
+directamente no consulta la preferencia, y una regla en `globals.css` que le
+devuelve la duración a la animación de respaldo —el bloque global le pone
+`animation-duration: 0.01ms !important` a todo, así que sin esa excepción la
+cinta daba una vuelta entera en una centésima de segundo—.
+
+Un tiempo hubo en el motor un `return` cuando la preferencia estaba puesta, y
+eso dejaba la cinta completamente muerta: no se movía, no respondía al puntero y
 tampoco se podía recorrer, porque el `overflow-hidden` del marco tapaba el
 scroll que el CSS dejaba de respaldo. Media docena de fotos congeladas y sin
-salida. **Al tocar esta parte, probarla con la preferencia puesta.**
+salida.
 
 **Con la cinta fuera de pantalla el bucle se apaga entero.** En la portada la
 cinta está bien abajo: sin esto, todo el rato que alguien pasa leyendo arriba

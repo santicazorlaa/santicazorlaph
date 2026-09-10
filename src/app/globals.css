@@ -187,26 +187,28 @@ body {
    movimiento; esto la contesta sin apagar nada. */
 
 @media (prefers-reduced-motion: reduce) {
-  /* Quieta, y a cambio se puede recorrer a mano: sacar el movimiento no puede
-     significar esconder la mitad del portfolio.
-
-     El scroll de respaldo va sólo mientras manda esta animación —o sea,
-     mientras el motor de JavaScript no arrancó—. Con el motor andando, la
-     cinta se recorre arrastrándola y un scroll encima pelearía con eso. */
-  .cinta-portfolio {
-    animation: none;
-  }
-  .cinta-portfolio-marco:has(.cinta-portfolio) {
-    overflow-x: auto;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* La cinta del portfolio es la única excepción de todo el sitio: se sigue
+     moviendo aunque el sistema pida menos movimiento.
+
+     Es una decisión de Santi, tomada sabiendo lo que implica: quien activa esa
+     preferencia muchas veces lo hace porque el movimiento le provoca mareo, y
+     la cinta es lo más grande que se mueve acá. Se deja anotado para que
+     alguien que la encuentre sepa que no es un olvido.
+
+     Hace falta repetir la duración con `!important` porque la regla de arriba
+     la aplasta a cero: sin esto, la cinta da una vuelta entera en una
+     centésima de segundo. Lo que se mueve por JavaScript —el desplazamiento,
+     la lupa y el vuelo de la foto— no pasa por acá: ese se maneja en
+     `cinta-portfolio.tsx` y tampoco mira la preferencia. */
+  .cinta-portfolio {
+    animation-duration: var(--duracion-cinta, 40s) !important;
   }
 }
 

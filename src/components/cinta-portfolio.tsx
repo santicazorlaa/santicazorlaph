@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { VisorPortfolio, type FotoDeVisor } from "./visor-portfolio";
 import { acercar, crearLente, empujeSinSolapes } from "@/lib/fisheye";
@@ -70,24 +70,6 @@ function copiasNecesarias(fotos: FotoDestacada[]) {
   // entra por la derecha mientras esa misma foto todavía está saliendo por la
   // izquierda.
   return Math.max(2, Math.ceil((PANTALLA_ESTIMADA * 2) / anchoDeUnaVuelta) + 1);
-}
-
-/// Si el sistema pide menos movimiento.
-///
-/// Va con `useSyncExternalStore` y no con un estado más un efecto porque es
-/// exactamente eso: un dato que vive afuera de React y que puede cambiar solo
-/// —en una Mac se cambia desde Accesibilidad sin recargar la página—. En el
-/// servidor, donde no hay a quién preguntarle, se asume que no.
-function useMenosMovimiento() {
-  return useSyncExternalStore(
-    (avisar) => {
-      const consulta = window.matchMedia("(prefers-reduced-motion: reduce)");
-      consulta.addEventListener("change", avisar);
-      return () => consulta.removeEventListener("change", avisar);
-    },
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false,
-  );
 }
 
 /**
@@ -161,11 +143,6 @@ export function CintaPortfolio({ fotos }: { fotos: FotoDestacada[] }) {
   }, []);
 
   const copias = copiasNecesarias(fotos);
-  // Con la preferencia puesta, la foto no vuela: aparece en el visor y listo.
-  // El vuelo **es** movimiento, así que animarlo mientras la cinta se queda
-  // quieta por respetar la preferencia sería contradecirse. Y además saca de
-  // encima el relevo entre las tres fotos, que es donde estaba el parpadeo.
-  const menosMovimiento = useMenosMovimiento();
 
   const { abrir, avisarVisor } = useMotorDeCinta({
     marco,
@@ -173,12 +150,6 @@ export function CintaPortfolio({ fotos }: { fotos: FotoDestacada[] }) {
     avisarQueAnda: setMotorAndando,
     alAbrir: (indice, tarjeta) => {
       setAbierta(indice);
-      if (menosMovimiento) {
-        // Sin vuelo: la tarjeta se esconde y la foto aparece en el visor, todo
-        // en el mismo dibujo. No hay relevo posible, así que no hay hueco.
-        esconderTarjeta(tarjeta);
-        return;
-      }
       setVueloPintado(false);
       setAterrizado(false);
       setVuelo({
@@ -208,7 +179,7 @@ export function CintaPortfolio({ fotos }: { fotos: FotoDestacada[] }) {
   const cerrarVisor = useCallback(() => {
     const grande = fotoDelVisor.current;
     const indice = abierta;
-    if (menosMovimiento || grande === null || indice === null) {
+    if (grande === null || indice === null) {
       revelarTarjeta();
       avisarVisor(false);
       setAbierta(null);
@@ -239,7 +210,7 @@ export function CintaPortfolio({ fotos }: { fotos: FotoDestacada[] }) {
       url: fotos[indice].urlGrande,
       desde: cajaDe(grande),
     });
-  }, [abierta, avisarVisor, fotos, pista, esconderTarjeta, revelarTarjeta, menosMovimiento]);
+  }, [abierta, avisarVisor, fotos, pista, esconderTarjeta, revelarTarjeta]);
 
   /// El destino del vuelo de vuelta: de todas las copias de esa foto que hay en
   /// la cinta, la que esté más cerca del centro **y se vea**.
@@ -529,17 +500,6 @@ function useMotorDeCinta({
     const laPista = pista.current;
     if (!elMarco || !laPista) return;
 
-    // Quien pidió menos movimiento no quiere una cinta desplazándose sola ni
-    // fotos deformándose al pasar el puntero. Lo que sí tiene que poder es
-    // recorrer el portfolio: **el motor arranca igual**, con la cinta quieta y
-    // sin lupa, y queda el arrastre —que no es movimiento gratuito sino la
-    // respuesta a su propia mano—.
-    //
-    // Antes acá había un `return` y eso dejaba la cinta completamente muerta:
-    // no se movía, no respondía y tampoco se podía recorrer, porque el
-    // `overflow-hidden` del marco tapaba el scroll que el CSS dejaba de
-    // respaldo. Quedaba media docena de fotos congeladas y sin salida.
-    const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let fotos: FotoEnCinta[] = [];
     let largoDeLaCinta = 0;
@@ -601,9 +561,7 @@ function useMotorDeCinta({
       // lo que midan y estén repetidas las veces que estén.
       const distintas = new Set(fotos.map((f) => f.el.dataset.indice)).size;
       const cuadrosDeUnaVuelta = distintas * SEGUNDOS_POR_FOTO * 60;
-      velocidad = sinMovimiento
-        ? 0
-        : largoDeLaCinta / (cuadrosDeUnaVuelta * (fotos.length / distintas));
+      velocidad = largoDeLaCinta / (cuadrosDeUnaVuelta * (fotos.length / distintas));
 
       return true;
     };
@@ -613,10 +571,6 @@ function useMotorDeCinta({
     // ---- La mano ----------------------------------------------------------
     const manejador = crearArrastre({
       elemento: elMarco,
-      // La inercia es movimiento que sigue solo después de soltar, así que con
-      // la preferencia puesta se corta: la cinta se mueve lo que la mano la
-      // movió y ni un píxel más.
-      conInercia: !sinMovimiento,
       alCorrer: (delta) => {
         desplazamiento += delta;
       },
@@ -627,8 +581,7 @@ function useMotorDeCinta({
     // Se sigue en la ventana entera y no sólo dentro de la cinta: saliendo
     // rápido por arriba, el aviso de "salí" puede no llegar nunca y la lupa
     // quedaría clavada en la última posición conocida.
-    const hayMouse =
-      !sinMovimiento && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const hayMouse = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
     const seguirPuntero = (e: PointerEvent) => {
       const caja = elMarco.getBoundingClientRect();
