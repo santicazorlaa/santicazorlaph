@@ -409,7 +409,13 @@ $33.075. Por eso el panel muestra, al lado de cada escalón, cuánto sale el pac
 es la cifra en la que se piensa. Al cambiar el precio por foto los packs se
 mueven, así que conviene pasar por el panel después.
 
-4. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
+4. **Los reembolsos no existen en el sitio.** Si Santi devuelve la plata desde
+   MercadoPago, la orden sigue figurando pagada y el link de descarga sigue
+   andando para siempre. Falta atender el aviso de `refunded` / `charged_back`
+   y decidir qué pasa con la descarga de una orden devuelta. Todavía no pasó
+   ninguna devolución.
+
+5. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
    cuenta, aviso al jugador cuando se suben sus fotos, y la tarjeta de "pack
    completo" que quedó afuera del documento de ofertas porque depende de esos
    filtros.
