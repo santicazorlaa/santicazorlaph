@@ -214,6 +214,12 @@ en el carrito aclarando que las fotos llegan por mail igual, y sirve sólo para
 etiquetarlo al publicar. La razón es la misma por la que no hay cuentas de
 comprador: cada campo obligatorio antes de pagar es un motivo más para no pagar.
 
+**Nada del sitio se desplaza en horizontal:** `html` y `body` van con
+`overflow-x: clip`. La cinta del portfolio se dibuja con el ancho de la ventana
+y ese ancho incluye la barra de scroll, así que sobraban siete píxeles por lado
+y la portada entera se corría. Va `clip` y no `hidden` porque `hidden` convierte
+al body en un contenedor de scroll y rompe todo lo que se queda pegado.
+
 **Las animaciones siguen una regla corta: lo que entra o sale va con
 `ease-out`, lo que se mueve en pantalla con `ease-in-out`, un color con `ease`,
 y lo que se repite todo el día no se anima.** Las de interfaz duran menos de
@@ -229,6 +235,28 @@ haber sido visible nunca, y quedaba invisible para siempre. Por eso además
 escucha el scroll y muestra lo que ya quedó por encima. Y como el estado
 escondido se manda desde el servidor, `layout.tsx` lleva un `<noscript>` que
 revela todo: sin JavaScript el sitio se lee igual.
+
+**El portfolio es una selección propia, no un marcado de fotos de partidos.**
+Vive en su tabla (`PortfolioPhoto`), se sube aparte desde `/admin/portfolio` y
+**no está a la venta**. Por eso es la única parte del sitio donde la foto se
+publica grande (1600 px) y sin marca de agua: su trabajo es mostrarle el nivel a
+un organizador, y una marca encima no muestra nada. Antes salía de marcar fotos
+de un partido con una estrella; se cambió porque un portfolio se arma eligiendo,
+no reciclando. Sube por el mismo camino en dos pasos que las fotos de un partido
+—el original nunca pasa por el servidor— y guarda su original en el bucket
+privado para poder rehacer las versiones publicadas.
+
+**La cinta se acerca bajo el mouse en vez de frenarse.** La foto que está abajo
+del puntero crece y las vecinas un poco menos, cada vez menos con la distancia:
+responde sin apagar el movimiento, que era lo que hacía la pausa. El cálculo
+toca los estilos directamente, sin pasar por el estado de React —corre en cada
+cuadro— y lee todas las posiciones antes de escribir ninguna escala, porque
+mezclar lecturas y escrituras obliga al navegador a recalcular la página una vez
+por foto. Se pinta en el propio evento del puntero además de por cuadro, así el
+efecto no depende de que el próximo cuadro llegue a tiempo.
+
+**El `<noscript>` va dentro del `<body>`.** Suelto como hijo de `<html>` rompe
+la hidratación: ahí sólo pueden ir `head` y `body`.
 
 **La cinta del portfolio no lleva `will-change`.** Sería lo esperable para algo
 que se mueve, pero la pista mide varios miles de píxeles de ancho y dejarla
