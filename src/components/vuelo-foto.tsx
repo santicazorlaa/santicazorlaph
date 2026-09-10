@@ -102,15 +102,39 @@ export function VueloDeFoto({
     let cuadro = 0;
     let ultimoDestino: CajaDeVuelo | null = null;
     let yaPinto = false;
-    let apagando: ReturnType<typeof setTimeout> | null = null;
 
-    /// La foto llegó. Se avisa para que el visor se saque de encima, y la capa
-    /// se queda un momento más apagándose sobre la tarjeta.
+    /// La foto llegó. Se avisa para que se destape lo que hay debajo, y la capa
+    /// se queda un momento más apagándose encima.
+    ///
+    /// El apagado va cuadro a cuadro y **no** con una transición de CSS, aunque
+    /// una transición sería lo natural. El motivo: `globals.css` le pone
+    /// `transition-duration: 0.01ms !important` a todo cuando el sistema pide
+    /// menos movimiento, así que la transición se cumplía de golpe y la capa
+    /// desaparecía en el acto —antes de que React alcanzara a dibujar lo de
+    /// abajo—, dejando el cuadro vacío que se ve como un parpadeo. Escrito a
+    /// mano, el apagado dura lo que tiene que durar en cualquier máquina.
+    ///
+    /// Y arranca un cuadro después, no en el mismo: destapar lo de abajo es un
+    /// cambio de estado de React, que se dibuja en el cuadro siguiente. Ese
+    /// cuadro de gracia es lo que garantiza que cuando la capa empieza a
+    /// apagarse ya hay algo atrás.
     const aterrizar = () => {
       avisarLlegada.current?.();
-      el.style.transition = `opacity ${APAGARSE_MS}ms linear`;
-      el.style.opacity = "0";
-      apagando = setTimeout(() => avisar.current(), APAGARSE_MS);
+
+      const empezoAApagarse = performance.now();
+      const apagar = (ahora: number) => {
+        const p = Math.min(1, (ahora - empezoAApagarse) / APAGARSE_MS);
+        el.style.opacity = String(1 - p);
+        if (p >= 1) {
+          avisar.current();
+          return;
+        }
+        cuadro = requestAnimationFrame(apagar);
+      };
+
+      cuadro = requestAnimationFrame(() => {
+        cuadro = requestAnimationFrame(apagar);
+      });
     };
 
     /// Se llama al final de cada cuadro, y sólo hace algo la primera vez.
@@ -179,7 +203,6 @@ export function VueloDeFoto({
     cuadro = requestAnimationFrame(pintar);
     return () => {
       if (cuadro) cancelAnimationFrame(cuadro);
-      if (apagando) clearTimeout(apagando);
     };
   }, [desde, hacia, duracionMs]);
 

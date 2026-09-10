@@ -307,6 +307,20 @@ fila**, no contra el principio de la cinta. Por eso, con la cinta quieta en
 cero, el motor no escribe nada y lo que se ve es exactamente lo que mandó el
 servidor: no hay salto al hidratar.
 
+**Cuidado con apoyarse en una transición de CSS para algo que la lógica
+necesita.** `globals.css` le pone `transition-duration: 0.01ms !important` a
+*todo* cuando el sistema pide menos movimiento. El apagado de la capa del vuelo
+usaba una transición y ahí se cumplía de golpe: la foto desaparecía antes de que
+React dibujara lo de abajo y quedaba el cuadro vacío. Por eso ese apagado va
+escrito a mano, cuadro a cuadro. **El síntoma es cruel de encontrar**: en una
+máquina sin la preferencia puesta no pasa nunca, así que se ve en la Mac o el
+teléfono de quien la tiene y no en el navegador donde uno prueba.
+
+**Con la preferencia puesta, la foto tampoco vuela**: aparece en el visor y
+listo. El vuelo es movimiento; animarlo mientras la cinta se queda quieta por
+respetar la preferencia sería contradecirse. Y de paso saca de encima el relevo
+entre las tres fotos, que es donde se escondía el parpadeo.
+
 **Con la preferencia de menos movimiento, el motor arranca igual.** La cinta no
 se desplaza sola y no hay lupa —eso es movimiento que nadie pidió—, pero el
 arrastre queda, porque no es movimiento gratuito sino la respuesta a la propia
