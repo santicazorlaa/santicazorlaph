@@ -57,3 +57,6 @@ next-env.d.ts
 assets/*.jpg
 assets/*.jpeg
 assets/*.png
+
+# Copia temporal de los textos al pasarlos de una base a la otra.
+contenido.json
