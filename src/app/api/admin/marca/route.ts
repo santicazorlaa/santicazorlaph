@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const centro = leer("centro", OPACIDAD_CENTRO, 100);
     const calidad = leer("calidad", CALIDAD_PREVIEW, 1);
     if (mosaico === null || centro === null || calidad === null) {
-      return NextResponse.redirect(`${siteUrl}/admin?marca=opacidad-invalida`, {
+      return NextResponse.redirect(`${siteUrl}/admin/ajustes?marca=opacidad-invalida`, {
         status: 303,
       });
     }
@@ -44,21 +44,21 @@ export async function POST(request: Request) {
     await guardarAjuste(OPACIDAD_MOSAICO, String(mosaico));
     await guardarAjuste(OPACIDAD_CENTRO, String(centro));
     await guardarAjuste(CALIDAD_PREVIEW, String(calidad));
-    return NextResponse.redirect(`${siteUrl}/admin?marca=opacidad`, { status: 303 });
+    return NextResponse.redirect(`${siteUrl}/admin/ajustes?marca=opacidad`, { status: 303 });
   }
 
   if (!esSlot(slot)) {
-    return NextResponse.redirect(`${siteUrl}/admin?marca=slot-invalido`, { status: 303 });
+    return NextResponse.redirect(`${siteUrl}/admin/ajustes?marca=slot-invalido`, { status: 303 });
   }
 
   if (accion === "borrar") {
     await borrarMarca(slot);
-    return NextResponse.redirect(`${siteUrl}/admin?marca=restaurada`, { status: 303 });
+    return NextResponse.redirect(`${siteUrl}/admin/ajustes?marca=restaurada`, { status: 303 });
   }
 
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.redirect(`${siteUrl}/admin?marca=sin-archivo`, { status: 303 });
+    return NextResponse.redirect(`${siteUrl}/admin/ajustes?marca=sin-archivo`, { status: 303 });
   }
 
   try {
@@ -67,10 +67,10 @@ export async function POST(request: Request) {
     const motivo =
       error instanceof MarcaError ? error.message : "No pudimos guardar el archivo";
     return NextResponse.redirect(
-      `${siteUrl}/admin?marca=error&detalle=${encodeURIComponent(motivo)}`,
+      `${siteUrl}/admin/ajustes?marca=error&detalle=${encodeURIComponent(motivo)}`,
       { status: 303 },
     );
   }
 
-  return NextResponse.redirect(`${siteUrl}/admin?marca=guardada`, { status: 303 });
+  return NextResponse.redirect(`${siteUrl}/admin/ajustes?marca=guardada`, { status: 303 });
 }

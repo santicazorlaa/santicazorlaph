@@ -28,9 +28,9 @@ export async function POST(request: Request) {
   // interpretar de otra manera.
   const texto = escribir(filas);
   if (!texto) {
-    return NextResponse.redirect(`${siteUrl}/admin?descuentos=vacio`, { status: 303 });
+    return NextResponse.redirect(`${siteUrl}/admin/ajustes?descuentos=vacio`, { status: 303 });
   }
 
   await guardarAjuste(ESCALONES_DESCUENTO, texto);
-  return NextResponse.redirect(`${siteUrl}/admin?descuentos=guardados`, { status: 303 });
+  return NextResponse.redirect(`${siteUrl}/admin/ajustes?descuentos=guardados`, { status: 303 });
 }

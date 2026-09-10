@@ -232,8 +232,8 @@ export default async function AdminEventoPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
-      <Link href="/admin" className="etiqueta text-muted hover:text-ink transition-colors">
-        ← Panel
+      <Link href="/admin/partidos" className="etiqueta text-muted hover:text-accent transition-colors">
+        ← Partidos
       </Link>
 
       <div className="flex flex-wrap items-end justify-between gap-4 mt-4 mb-8">

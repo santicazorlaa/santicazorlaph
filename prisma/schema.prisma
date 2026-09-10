@@ -85,6 +85,11 @@ model Order {
   email     String
   buyerName String?
 
+  /// El Instagram del comprador, si quiso dejarlo. Es opcional a propósito: las
+  /// fotos llegan igual por mail, así que pedirlo como obligatorio sería un
+  /// obstáculo más antes de pagar. Sirve para etiquetarlo cuando Santi publica.
+  instagram String?
+
   /// "PENDING" | "PAID" | "FAILED" — ver OrderStatus en src/lib/orders.ts
   status   String @default("PENDING")
   totalArs Int

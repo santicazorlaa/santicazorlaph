@@ -12,6 +12,7 @@ export function CartView() {
 
 
   const [email, setEmail] = useState("");
+  const [instagram, setInstagram] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -41,6 +42,7 @@ export function CartView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
+          instagram: instagram.trim() || undefined,
           photoIds: cart.items.map((i) => i.photoId),
         }),
       });
@@ -181,6 +183,26 @@ export function CartView() {
           />
           <p className="text-xs text-muted">
             Ahí te mandamos el link para descargar las fotos.
+          </p>
+
+          {/* Opcional de verdad, y por eso lo dice: las fotos llegan por mail
+              igual. Un campo más antes de pagar es un motivo más para no
+              pagar, así que sólo se pide lo que sirve y se aclara que se puede
+              saltear. */}
+          <label htmlFor="instagram" className="etiqueta text-muted block pt-2">
+            Tu Instagram <span className="text-[0.65rem]">(opcional)</span>
+          </label>
+          <input
+            id="instagram"
+            type="text"
+            value={instagram}
+            onChange={(e) => setInstagram(e.target.value)}
+            placeholder="@tuusuario"
+            className="w-full bg-surface border border-line rounded-md px-3 py-2.5 text-sm focus:border-accent outline-none"
+          />
+          <p className="text-xs text-muted">
+            Si lo dejás, Santi puede etiquetarte cuando publique la foto. Las fotos te llegan
+            al mail igual.
           </p>
 
           {error && <p className="text-sm text-danger">{error}</p>}

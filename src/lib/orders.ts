@@ -37,7 +37,7 @@ export class OrderError extends Error {}
  * Crea la orden y el link de pago. El total sale SIEMPRE del precio guardado en
  * la base, nunca de lo que mande el navegador.
  */
-export async function createOrder(photoIds: string[], email: string) {
+export async function createOrder(photoIds: string[], email: string, instagram?: string) {
   const unique = [...new Set(photoIds)];
   if (unique.length === 0) throw new OrderError("El carrito está vacío");
   if (unique.length > 200) throw new OrderError("Demasiadas fotos en una sola compra");
@@ -87,6 +87,9 @@ export async function createOrder(photoIds: string[], email: string) {
     data: {
       token: newToken(),
       email,
+      // Se guarda sin arroba y en minúsculas, así el mismo usuario escrito de
+      // dos formas queda igual en el panel.
+      instagram: instagram?.trim().replace(/^@+/, "").toLowerCase() || null,
       totalArs,
       status: OrderStatus.PENDING,
       items: {
