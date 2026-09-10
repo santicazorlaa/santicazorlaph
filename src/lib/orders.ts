@@ -154,7 +154,15 @@ export async function reconcilePendingOrder(orderId: string) {
  * Única vía por la que una orden pasa a PAID. Le preguntamos a MercadoPago por
  * el pago; no confiamos en lo que diga quien llamó al webhook.
  */
-export async function confirmPayment(paymentId: string) {
+export async function confirmPayment(
+  paymentId: string,
+  opts: {
+    /// El webhook le pasa `after` de Next para que el mail salga despues de
+    /// responderle a MercadoPago. Sin esto, MercadoPago espera a que Resend
+    /// conteste antes de recibir su 200, y un aviso lento cuenta como fallado.
+    diferir?: (tarea: () => Promise<void>) => void;
+  } = {},
+) {
   const payment = await getPayment(paymentId);
 
   const orderId = payment.external_reference;
@@ -164,10 +172,22 @@ export async function confirmPayment(paymentId: string) {
   if (!order) return { ok: false, reason: "orden inexistente" };
   if (order.status === OrderStatus.PAID) return { ok: true, alreadyPaid: true };
 
-  // El monto tiene que coincidir con lo que calculamos nosotros.
+  // El monto tiene que coincidir con lo que calculamos nosotros, y en la misma
+  // moneda: comparar solo el numero dejaria pasar un pago aprobado en otra
+  // moneda cuyo importe, por el cambio, es mayor.
   const paid = Number(payment.transaction_amount ?? 0);
-  if (payment.status === "approved" && paid < order.totalArs) {
-    return { ok: false, reason: "monto menor al esperado" };
+  const moneda = payment.currency_id ?? "ARS";
+  if (payment.status === "approved" && (paid < order.totalArs || moneda !== "ARS")) {
+    // Un pago aprobado que no cuadra no puede quedar solo en un `return`: la
+    // orden se queda pendiente para siempre y nadie se entera.
+    console.error("pago aprobado que no cuadra con la orden", {
+      paymentId: String(payment.id),
+      orderId: order.id,
+      esperado: order.totalArs,
+      pagado: paid,
+      moneda,
+    });
+    return { ok: false, reason: "monto o moneda distintos a lo esperado" };
   }
 
   if (payment.status !== "approved") {
@@ -195,7 +215,11 @@ export async function confirmPayment(paymentId: string) {
   const reciénPagada = transicion.count === 1;
   if (reciénPagada) {
     // Nunca lanza: si el mail falla, la compra igual quedó acreditada.
-    await enviarMailDeCompra(order.id);
+    const mandarMail = async () => {
+      await enviarMailDeCompra(order.id);
+    };
+    if (opts.diferir) opts.diferir(mandarMail);
+    else await mandarMail();
   }
 
   return { ok: true, alreadyPaid: !reciénPagada };

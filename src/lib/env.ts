@@ -22,10 +22,27 @@ export const r2 = () => ({
   publicUrl: required("R2_PUBLIC_URL").replace(/\/$/, ""),
 });
 
-export const mercadopago = () => ({
-  accessToken: required("MP_ACCESS_TOKEN"),
-  webhookSecret: process.env.MP_WEBHOOK_SECRET ?? "",
-});
+export const mercadopago = () => {
+  const accessToken = required("MP_ACCESS_TOKEN");
+
+  // Las credenciales de prueba y las reales se distinguen por el prefijo. Es la
+  // convención de MercadoPago y la única forma de darse cuenta a tiempo de que
+  // quedaron cruzadas: con el token de prueba en producción el sitio parece
+  // andar y no cobra nada, y sólo se nota mirando la cuenta días después.
+  const esDePrueba = accessToken.startsWith("TEST-");
+  if (process.env.NODE_ENV === "production" && esDePrueba) {
+    throw new Error(
+      "MP_ACCESS_TOKEN es de PRUEBA y esto es producción: el sitio no cobraría de verdad.",
+    );
+  }
+  if (process.env.NODE_ENV !== "production" && !esDePrueba) {
+    console.warn(
+      "MP_ACCESS_TOKEN es el REAL y estas en desarrollo: los pagos mueven plata de verdad.",
+    );
+  }
+
+  return { accessToken, webhookSecret: process.env.MP_WEBHOOK_SECRET ?? "" };
+};
 
 /// Sin R2 configurado el sitio guarda las fotos en disco, para poder trabajar
 /// en local sin cuenta de Cloudflare.

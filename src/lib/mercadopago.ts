@@ -31,6 +31,10 @@ export async function createPreference(opts: {
   const preference = new Preference(client());
 
   const res = await preference.create({
+    // Clave de idempotencia: si la red corta despues de que MercadoPago creo la
+    // preferencia y el reintento sale igual, devuelve la misma en vez de crear
+    // otra. La orden es unica, asi que sirve de clave.
+    requestOptions: { idempotencyKey: `orden-${opts.orderId}` },
     body: {
       items: opts.items.map((i) => ({
         id: i.id,

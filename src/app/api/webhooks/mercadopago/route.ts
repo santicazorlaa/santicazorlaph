@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { confirmPayment } from "@/lib/orders";
 import { verifyWebhookSignature } from "@/lib/mercadopago";
@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   };
 
   const dataId = body.data?.id ?? url.searchParams.get("data.id");
-  const tipo = body.type ?? url.searchParams.get("type");
+  // `type` es el formato actual; `topic` el de las notificaciones IPN viejas.
+  // Leemos los dos para que un aviso no se ignore en silencio.
+  const tipo =
+    body.type ?? url.searchParams.get("type") ?? url.searchParams.get("topic");
 
   const firmaOk = verifyWebhookSignature({
     signatureHeader: request.headers.get("x-signature"),
@@ -36,7 +39,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const resultado = await confirmPayment(dataId);
+    // El mail sale despues de responderle a MercadoPago: un aviso que tarda
+    // porque el servidor de mails esta lento cuenta como aviso fallado.
+    const resultado = await confirmPayment(dataId, { diferir: (tarea) => after(tarea) });
     if (!resultado.ok) {
       console.info("pago no acreditado", { dataId, motivo: resultado.reason });
     }
