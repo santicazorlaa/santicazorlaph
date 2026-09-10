@@ -98,8 +98,15 @@ export function SiteFooter({ contenido }: { contenido: Contenido }) {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-5 pb-8 text-sm text-muted">
-        © {new Date().getFullYear()} {siteName}
+      <div className="mx-auto max-w-6xl px-5 pb-8 text-sm text-muted flex items-center justify-between">
+        <span>© {new Date().getFullYear()} {siteName}</span>
+        <Link
+          href="/admin"
+          className="text-xs text-muted/60 con-mouse:hover:text-ink transition-colors"
+          title="Panel de administración (atajo: Ctrl+Shift+A)"
+        >
+          Administración
+        </Link>
       </div>
     </footer>
   );

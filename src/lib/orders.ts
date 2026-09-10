@@ -5,7 +5,7 @@ import { customAlphabet } from "nanoid";
 import { leerEscalones } from "./ajustes";
 import { db } from "./db";
 import { calcularConPack, repartirConPack, type ItemConEvento } from "./descuentos";
-import { enviarMailDeCompra } from "./email";
+import { enviarMailDeCompra, enviarNotificacionDeVenta } from "./email";
 import { mercadopago as mpEnv } from "./env";
 import { createPreference, getPayment } from "./mercadopago";
 
@@ -200,6 +200,18 @@ export async function confirmPayment(
     return { ok: false, reason: `pago ${payment.status}` };
   }
 
+  const rawPayer = payment.payer as { first_name?: string; last_name?: string } | undefined;
+  const rawCardholder = (payment as { cardholder?: { name?: string } }).cardholder;
+  const rawAdditionalPayer = (
+    payment as { additional_info?: { payer?: { first_name?: string; last_name?: string } } }
+  ).additional_info?.payer;
+
+  const buyerName =
+    [rawPayer?.first_name, rawPayer?.last_name].filter(Boolean).join(" ").trim() ||
+    [rawAdditionalPayer?.first_name, rawAdditionalPayer?.last_name].filter(Boolean).join(" ").trim() ||
+    rawCardholder?.name?.trim() ||
+    null;
+
   // El estado va en el `where`: si dos avisos de MercadoPago llegan al mismo
   // tiempo, sólo uno hace la transición. Eso es lo que garantiza que el mail
   // salga una sola vez.
@@ -209,6 +221,7 @@ export async function confirmPayment(
       status: OrderStatus.PAID,
       paidAt: new Date(),
       mpPaymentId: String(payment.id),
+      ...(buyerName ? { buyerName } : {}),
     },
   });
 
@@ -216,7 +229,10 @@ export async function confirmPayment(
   if (reciénPagada) {
     // Nunca lanza: si el mail falla, la compra igual quedó acreditada.
     const mandarMail = async () => {
-      await enviarMailDeCompra(order.id);
+      await Promise.allSettled([
+        enviarMailDeCompra(order.id),
+        enviarNotificacionDeVenta(order.id),
+      ]);
     };
     if (opts.diferir) opts.diferir(mandarMail);
     else await mandarMail();

@@ -308,6 +308,21 @@ export default async function ContenidoPage({ searchParams }: Props) {
             valor={c["contacto.mensaje"]}
           />
           <Campo
+            clave="contacto.titulo"
+            etiqueta="Título del bloque de contacto"
+            ayuda="El llamado a la acción al final de la portada (ej: ¿Tenés un evento en puerta?)."
+            valor={c["contacto.titulo"]}
+            placeholder="¿Tenés un evento en puerta?"
+          />
+          <Campo
+            clave="contacto.bajada"
+            etiqueta="Texto explicativo del contacto"
+            ayuda="El texto que acompaña al título (ej: Escribime y lo charlamos. Contame qué es, cuándo y dónde.)."
+            valor={c["contacto.bajada"]}
+            filas={2}
+            placeholder="Escribime y lo charlamos. Contame qué es, cuándo y dónde."
+          />
+          <Campo
             clave="contacto.instagram"
             etiqueta="Instagram"
             ayuda="Tu usuario, sin el arroba."

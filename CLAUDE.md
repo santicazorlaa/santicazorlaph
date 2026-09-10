@@ -216,7 +216,18 @@ las tarjetas —partidos, ventas, contenido, ajustes— con el número que impor
 cada una; cada apartado vive en su propia pantalla (`/admin/partidos`,
 `/admin/ventas`, `/admin/ajustes`). Antes era todo una sola página y había que
 scrollear a ciegas. Al sumar un apartado nuevo, va como pantalla propia y tarjeta
-en el tablero, no apilado abajo de lo que ya está.
+en el tablero, no apilado abajo de lo que ya está. Para entrar sin escribir la URL,
+hay un link "Administración" discreto en el pie de página y un atajo global de
+teclado (`Ctrl + Shift + A` / `Cmd + Shift + A`). El botón de "Cerrar sesión" en
+la esquina del panel borra la cookie `sc_admin` vía `/api/admin/logout`.
+
+**Las ventas en el panel muestran sólo lo cobrado por defecto.** En `/admin/ventas`
+las órdenes se filtran en pestañas ("Pagadas", "Pendientes", "Todas") para que los
+carritos abandonados no tapen las ventas reales, y hay un botón para limpiar las
+pendientes de más de 24 horas. Al acreditarse un pago, el servidor extrae el
+nombre real del pagador desde MercadoPago (`buyerName`), lo guarda en la orden y
+le manda a Santi una notificación por mail con el nombre, email, Instagram y
+fotos vendidas.
 
 **El Instagram del comprador es opcional y tiene que seguir siéndolo.** Se pide
 en el carrito aclarando que las fotos llegan por mail igual, y sirve sólo para

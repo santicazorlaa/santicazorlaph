@@ -25,6 +25,7 @@ export type FotoComprada = {
  */
 export function Venta({
   email,
+  buyerName,
   instagram,
   fecha,
   cantidad,
@@ -34,6 +35,7 @@ export function Venta({
   formId,
 }: {
   email: string;
+  buyerName?: string | null;
   instagram: string | null;
   fecha: string;
   cantidad: string;
@@ -63,17 +65,28 @@ export function Venta({
           </span>
         </button>
 
-        {formId ? (
-          <input
-            type="email"
-            name="email"
-            form={formId}
-            defaultValue={email}
-            className="text-sm flex-1 min-w-40 bg-transparent border border-transparent hover:border-line focus:border-accent rounded px-1.5 py-0.5 -mx-1.5 outline-none transition-colors"
-          />
-        ) : (
-          <span className="text-sm flex-1 min-w-40 truncate px-1.5">{email}</span>
-        )}
+        <div className="flex-1 min-w-44">
+          {buyerName && (
+            <p className="text-sm font-medium text-ink leading-tight px-1.5 truncate">
+              {buyerName}
+            </p>
+          )}
+          {formId ? (
+            <input
+              type="email"
+              name="email"
+              form={formId}
+              defaultValue={email}
+              className={`w-full bg-transparent border border-transparent hover:border-line focus:border-accent rounded px-1.5 py-0.5 -mx-1.5 outline-none transition-colors ${
+                buyerName ? "text-xs text-muted" : "text-sm"
+              }`}
+            />
+          ) : (
+            <span className={`block truncate px-1.5 ${buyerName ? "text-xs text-muted" : "text-sm"}`}>
+              {email}
+            </span>
+          )}
+        </div>
 
         <span className="text-sm text-muted tabular-nums">{fecha}</span>
         <span className="text-sm text-muted tabular-nums w-20 text-right">{cantidad}</span>

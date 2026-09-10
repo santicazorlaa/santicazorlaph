@@ -58,7 +58,17 @@ export default async function AdminPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
-      <h1 className="titulo text-4xl mb-2">Panel</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+        <h1 className="titulo text-4xl">Panel</h1>
+        <form action="/api/admin/logout" method="POST">
+          <button
+            type="submit"
+            className="etiqueta text-xs border border-line rounded-full px-4 py-2 text-muted con-mouse:hover:border-accent con-mouse:hover:text-ink transition-colors"
+          >
+            Cerrar sesión
+          </button>
+        </form>
+      </div>
       <p className="text-sm text-muted mb-10">
         {ultimaVenta?.paidAt
           ? `Última venta: ${precio(ultimaVenta.totalArs)}, el ${fechaBreve(ultimaVenta.paidAt)}.`

@@ -295,11 +295,13 @@ export default async function Home() {
         {whatsapp && (
           <section className="py-20 border-t border-line text-center">
             <TextoEntrante as="h2" className="titulo text-3xl sm:text-4xl text-balance max-w-2xl mx-auto">
-              ¿Tenés un evento en puerta?
+              {contenido["contacto.titulo"] || "¿Tenés un evento en puerta?"}
             </TextoEntrante>
-            <p className="text-muted mt-4 max-w-lg mx-auto">
-              Escribime y lo charlamos. Contame qué es, cuándo y dónde.
-            </p>
+            {contenido["contacto.bajada"] && (
+              <p className="text-muted mt-4 max-w-lg mx-auto">
+                {contenido["contacto.bajada"]}
+              </p>
+            )}
             <a
               href={whatsapp}
               target="_blank"

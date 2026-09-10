@@ -3,6 +3,7 @@ import { Inter, Inter_Tight } from "next/font/google";
 
 import { CartProvider } from "@/components/cart-context";
 import { leerEscalones } from "@/lib/ajustes";
+import { AtajoAdmin } from "@/components/atajo-admin";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { WhatsappFlotante } from "@/components/whatsapp-flotante";
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <style>{`.aparece, .palabra-entrante { opacity: 1 !important; transform: none !important; filter: none !important; }`}</style>
         </noscript>
         <CartProvider escalones={escalones}>
+          <AtajoAdmin />
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter contenido={contenido} />

@@ -199,3 +199,110 @@ export async function enviarMailDeCompra(orderId: string) {
     return { ok: false, motivo: "excepción" };
   }
 }
+
+async function obtenerDestinatarioAdmin() {
+  if (process.env.ADMIN_EMAIL?.trim()) return process.env.ADMIN_EMAIL.trim();
+  const ajuste = await db.ajuste
+    .findUnique({ where: { clave: "contacto.email" } })
+    .catch(() => null);
+  if (ajuste?.valor?.trim()) return ajuste.valor.trim();
+  const match = process.env.MAIL_FROM?.match(/<([^>]+)>/);
+  return match ? match[1] : process.env.MAIL_FROM;
+}
+
+/**
+ * Notifica a Santi por correo cuando se acredita una compra.
+ * Incluye el nombre completo del comprador (obtenido de MercadoPago), su email,
+ * su Instagram (si lo dejó), el monto y las fotos adquiridas.
+ */
+export async function enviarNotificacionDeVenta(orderId: string) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.MAIL_FROM;
+
+  if (!apiKey || !from) return { ok: false, motivo: "sin configurar" };
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: {
+      items: {
+        include: {
+          photo: { select: { code: true, event: { select: { title: true } } } },
+        },
+      },
+    },
+  });
+  if (!order) return { ok: false, motivo: "orden inexistente" };
+
+  const destino = await obtenerDestinatarioAdmin();
+  if (!destino) {
+    console.warn("[mail-admin] no hay email configurado para recibir avisos de ventas");
+    return { ok: false, motivo: "sin destinatario" };
+  }
+
+  const eventos = [...new Set(order.items.map((i) => i.photo.event.title))];
+  const nombre = order.buyerName?.trim() || "No informado por MercadoPago";
+  const ig = order.instagram ? `@${order.instagram}` : "No dejó Instagram";
+  const cantFotos = order.items.length;
+  const total = precio(order.totalArs);
+  const panelVentasUrl = `${siteUrl}/admin/ventas`;
+
+  const html = `<!doctype html>
+<html lang="es"><body style="margin:0;padding:0;background:#f2f2f0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f0;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background:${TINTA};padding:20px 28px;">
+          <h2 style="margin:0;color:#ffffff;font-size:20px;">🎉 ¡Nueva venta de fotos!</h2>
+        </td></tr>
+        <tr><td style="padding:28px;">
+          <p style="margin:0 0 16px;font-size:16px;color:${TINTA};">
+            Acaba de ingresar una venta por <strong>${escapar(total)}</strong>.
+          </p>
+          <table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="background:#f7f7f5;border-radius:6px;font-size:14px;color:${TINTA};margin-bottom:24px;">
+            <tr><td style="color:${GRIS};width:140px;">Comprador:</td><td><strong>${escapar(nombre)}</strong></td></tr>
+            <tr><td style="color:${GRIS};">Email:</td><td>${escapar(order.email)}</td></tr>
+            <tr><td style="color:${GRIS};">Instagram:</td><td>${escapar(ig)}</td></tr>
+            <tr><td style="color:${GRIS};">Fotos:</td><td>${cantFotos} ${cantFotos === 1 ? "foto" : "fotos"} (${escapar(eventos.join(" · "))})</td></tr>
+            <tr><td style="color:${GRIS};">Total cobrado:</td><td><strong style="color:${AMBAR};">${escapar(total)}</strong></td></tr>
+          </table>
+          <a href="${escapar(panelVentasUrl)}"
+             style="display:inline-block;background:${TINTA};color:#ffffff;text-decoration:none;
+                    font-size:14px;font-weight:bold;padding:12px 24px;border-radius:6px;">
+            Ver en el panel de ventas →
+          </a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = [
+    "¡Nueva venta de fotos confirmada!",
+    "",
+    `Comprador: ${nombre}`,
+    `Email: ${order.email}`,
+    `Instagram: ${ig}`,
+    `Fotos: ${cantFotos} (${eventos.join(" · ")})`,
+    `Total cobrado: ${total}`,
+    "",
+    `Ver en el panel: ${panelVentasUrl}`,
+  ].join("\n");
+
+  try {
+    const { error } = await new Resend(apiKey).emails.send({
+      from,
+      to: destino,
+      subject: `🎉 Nueva venta: ${nombre} compró ${cantFotos} fotos (${total})`,
+      html,
+      text,
+    });
+    if (error) {
+      console.error(`[mail-admin] falló el aviso de venta ${orderId}`, error);
+      return { ok: false, motivo: error.message };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error(`[mail-admin] excepción al enviar aviso de venta ${orderId}`, e);
+    return { ok: false, motivo: "excepción" };
+  }
+}
