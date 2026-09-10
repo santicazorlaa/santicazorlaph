@@ -97,19 +97,31 @@ const AVISOS_DESCUENTOS: Record<string, string> = {
 const AVISOS_MAIL: Record<string, string> = {
   reenviado: "Listo: le volvimos a mandar el mail con sus fotos.",
   "reenvio-error": "No se pudo reenviar. Puede que falte configurar el correo.",
+  "mail-invalido": "Ese mail no parece válido, así que no se guardó ni se mandó nada.",
 };
 
-/// Reenvía el mail de descarga a mano, para cuando el comprador dice que no le
-/// llegó o escribió mal el email. Sólo tiene sentido en órdenes ya pagadas: una
-/// pendiente todavía no tiene nada que entregar.
+/**
+ * Reenvía el mail de descarga a mano, para cuando el comprador dice que no le
+ * llegó o escribió mal el email. Sólo tiene sentido en órdenes ya pagadas: una
+ * pendiente todavía no tiene nada que entregar.
+ *
+ * El mail viene siempre del campo del formulario, que el panel precarga con el
+ * de la venta: si no se tocó, reenvía al mismo; si se corrigió, guarda la
+ * corrección primero y reenvía a la dirección nueva.
+ */
 async function reenviarMail(formData: FormData) {
   "use server";
   if (!(await isAdmin())) redirect("/admin/login");
 
   const orderId = String(formData.get("orderId") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
   if (!orderId) redirect("/admin");
+  if (!email || !email.includes("@")) redirect("/admin?mail=mail-invalido");
+
+  await db.order.update({ where: { id: orderId }, data: { email } });
 
   const resultado = await enviarMailDeCompra(orderId);
+  revalidatePath("/admin");
   redirect(`/admin?mail=${resultado.ok ? "reenviado" : "reenvio-error"}`);
 }
 
@@ -392,40 +404,60 @@ export default async function AdminPage({ searchParams }: Props) {
           </p>
         ) : (
           <ul className="divide-y divide-line border-y border-line mb-4">
-            {ultimasOrdenes.map((orden) => (
-              <li key={orden.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 py-3">
-                <span className="text-sm flex-1 min-w-40 truncate">{orden.email}</span>
-                <span className="text-sm text-muted tabular-nums">
-                  {fechaBreve(orden.createdAt)} {horaDe(orden.createdAt)}
-                </span>
-                <span className="text-sm text-muted tabular-nums w-20 text-right">
-                  {plural(orden._count.items, "foto", "fotos")}
-                </span>
-                <span className="text-sm tabular-nums w-24 text-right">
-                  {precio(orden.totalArs)}
-                </span>
-                <span
-                  className={`etiqueta text-[0.65rem] w-20 text-right ${
-                    orden.status === OrderStatus.PAID ? "text-good" : "text-muted"
-                  }`}
-                >
-                  {orden.status === OrderStatus.PAID ? "Pagada" : "Pendiente"}
-                </span>
-                <span className="w-28 text-right">
-                  {orden.status === OrderStatus.PAID ? (
-                    <form action={reenviarMail}>
+            {ultimasOrdenes.map((orden) => {
+              const formId = `reenviar-${orden.id}`;
+              const puedeReenviar = orden.status === OrderStatus.PAID;
+              return (
+                <li key={orden.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 py-3">
+                  {/* El formulario no envuelve el mail ni el botón porque no son
+                      vecinos en este layout de fila; el atributo `form` en los dos
+                      los conecta igual con este <form>, que va vacío. */}
+                  {puedeReenviar && (
+                    <form id={formId} action={reenviarMail}>
                       <input type="hidden" name="orderId" value={orden.id} />
+                    </form>
+                  )}
+                  {puedeReenviar ? (
+                    <input
+                      type="email"
+                      name="email"
+                      form={formId}
+                      defaultValue={orden.email}
+                      className="text-sm flex-1 min-w-40 bg-transparent border border-transparent hover:border-line focus:border-accent rounded px-1.5 py-0.5 -mx-1.5 outline-none transition-colors"
+                    />
+                  ) : (
+                    <span className="text-sm flex-1 min-w-40 truncate px-1.5">{orden.email}</span>
+                  )}
+                  <span className="text-sm text-muted tabular-nums">
+                    {fechaBreve(orden.createdAt)} {horaDe(orden.createdAt)}
+                  </span>
+                  <span className="text-sm text-muted tabular-nums w-20 text-right">
+                    {plural(orden._count.items, "foto", "fotos")}
+                  </span>
+                  <span className="text-sm tabular-nums w-24 text-right">
+                    {precio(orden.totalArs)}
+                  </span>
+                  <span
+                    className={`etiqueta text-[0.65rem] w-20 text-right ${
+                      orden.status === OrderStatus.PAID ? "text-good" : "text-muted"
+                    }`}
+                  >
+                    {orden.status === OrderStatus.PAID ? "Pagada" : "Pendiente"}
+                  </span>
+                  <span className="w-28 text-right">
+                    {puedeReenviar && (
                       <button
                         type="submit"
+                        form={formId}
                         className="etiqueta text-[0.65rem] text-muted hover:text-accent transition-colors"
                       >
                         Reenviar mail
                       </button>
-                    </form>
-                  ) : null}
-                </span>
-              </li>
-            ))}
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
