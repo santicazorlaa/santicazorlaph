@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { EncuadrarTapa } from "@/components/encuadrar-tapa";
 import { SubirImagen } from "@/components/subir-imagen";
 import { isAdmin } from "@/lib/auth";
 import { CLAVES, leerContenido, type Clave } from "@/lib/contenido";
@@ -46,7 +47,13 @@ async function borrarImagen(formData: FormData) {
 
   // No se borra el archivo del bucket: sobra un archivo chico, que no molesta,
   // y a cambio nunca se rompe una imagen que hubiera quedado referenciada.
-  await guardarContenido({ [clave]: "" });
+  // Sacar la tapa se lleva su recorte de celular: sin la foto de escritorio, el
+  // recorte alto quedaría publicándose solo en los teléfonos.
+  await guardarContenido(
+    clave === "hero.fotoKey"
+      ? { "hero.fotoKey": "", "hero.fotoKeyCelular": "" }
+      : { [clave]: "" },
+  );
   revalidatePath("/", "layout");
   redirect("/admin/contenido?guardado=1");
 }
@@ -170,12 +177,13 @@ export default async function ContenidoPage({ searchParams }: Props) {
           <Guardar />
         </form>
 
-        <SubirImagen
-          campo="tapa"
-          etiqueta="Foto de fondo"
-          ayuda="Una sola foto tuya, de las que mejor entren a lo ancho. Va detrás del título, oscurecida para que el texto se lea. Si no elegís ninguna, se usa la portada del último partido."
-          actual={c["hero.fotoKey"] ? publicUrl(c["hero.fotoKey"]) : null}
-          proporcion="aspect-[16/9]"
+        <EncuadrarTapa
+          actualEscritorio={c["hero.fotoKey"] ? publicUrl(c["hero.fotoKey"]) : null}
+          actualCelular={c["hero.fotoKeyCelular"] ? publicUrl(c["hero.fotoKeyCelular"]) : null}
+          hayOrigen={Boolean(c["hero.origenKey"])}
+          encuadreEscritorio={c["hero.encuadreEscritorio"]}
+          encuadreCelular={c["hero.encuadreCelular"]}
+          titular={c["hero.titular"]}
         />
         {c["hero.fotoKey"] && (
           <form action={borrarImagen} className="mt-3">

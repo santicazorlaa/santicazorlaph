@@ -22,6 +22,7 @@
 import { db } from "../src/lib/db";
 import { guardarContenido, leerContenido } from "../src/lib/contenido";
 import { deleteObject, getObject, putObject } from "../src/lib/storage";
+import { leerEncuadre, TAPA_CELULAR, TAPA_ESCRITORIO } from "../src/lib/encuadre";
 import { renderPortfolio, renderRetrato, renderTapa } from "../src/lib/watermark";
 
 const aplicar = process.argv.includes("--aplicar");
@@ -45,13 +46,30 @@ async function main() {
   // La tapa y el retrato. Sólo se pueden rehacer si quedó guardado de dónde
   // salieron: las que se subieron antes de que el panel guardara el origen hay
   // que volver a elegirlas a mano, una sola vez.
+  //
+  // La tapa son dos, con el recorte que Santi acomodó para cada pantalla.
   for (const [nombre, claveFoto, claveOrigen, render] of [
-    ["Tapa", "hero.fotoKey", "hero.origenKey", renderTapa],
+    [
+      "Tapa (computadora)",
+      "hero.fotoKey",
+      "hero.origenKey",
+      (b: Buffer) =>
+        renderTapa(b, TAPA_ESCRITORIO, leerEncuadre(contenido["hero.encuadreEscritorio"])),
+    ],
+    [
+      "Tapa (celular)",
+      "hero.fotoKeyCelular",
+      "hero.origenKey",
+      (b: Buffer) => renderTapa(b, TAPA_CELULAR, leerEncuadre(contenido["hero.encuadreCelular"])),
+    ],
     ["Retrato", "sobre.fotoKey", "sobre.origenKey", renderRetrato],
   ] as const) {
     const origen = contenido[claveOrigen];
     const actual = contenido[claveFoto];
-    if (!actual) {
+    // Se mira el origen, no la imagen publicada: el recorte de celular puede
+    // no existir todavía —es más nuevo que la tapa— y esta es justamente la
+    // corrida que lo crea.
+    if (!origen && !actual) {
       console.log(`${nombre}: no hay ninguna elegida.`);
       continue;
     }
@@ -67,7 +85,7 @@ async function main() {
     await rehacer(nombre, origen, destino, render);
     if (aplicar) {
       await guardarContenido({ [claveFoto]: destino });
-      if (actual !== destino && actual.startsWith("sitio/")) {
+      if (actual && actual !== destino && actual.startsWith("sitio/")) {
         await deleteObject("public", actual).catch(() => {});
       }
     }

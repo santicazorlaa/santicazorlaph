@@ -151,12 +151,37 @@ salía borrosa en cualquier monitor de escritorio —una tapa borrosa es peor qu
 no tener tapa—; el retrato es la única sin límite real, porque no está a la
 venta. Subirle el tamaño a la portada o al portfolio sí es regalar una foto.
 
+**La tapa se publica dos veces, con dos recortes distintos de la misma foto.**
+Una franja apaisada (1920×800) para escritorio y un rectángulo alto (1080×1440)
+para el celular. No son dos tamaños de lo mismo: dejando recortar al navegador
+—que corta siempre por el centro— en el teléfono aparecía el pasto y la jugada
+quedaba afuera. Santi acomoda cada recorte en `/admin/contenido`, arrastrando y
+acercando la foto dentro de un recuadro que tiene el degradado y el título
+encima, así que ve exactamente lo que se va a publicar.
+
+Las cuentas del encuadre viven en `src/lib/encuadre.ts`, **sin `server-only`**,
+por el mismo motivo que los descuentos: las usa el editor del panel para dibujar
+la previsualización y el servidor para recortar de verdad. Si fueran dos
+cuentas, un día dejarían de coincidir y lo que Santi acomoda no sería lo que
+sale. El recorte se guarda en fracciones (0 a 1), no en píxeles, para que siga
+valiendo si la foto se reprocesa con otra medida.
+
+**El alto del encabezado es un mínimo, no una proporción fija.** Sale de la
+misma proporción con la que se encuadró (`min-h-[133.33vw]` en el celular,
+`md:min-h-[41.67vw]`), pero como mínimo: con una proporción fija, un titular
+largo no agrandaba la sección sino que se salía por arriba y quedaba cortado
+abajo del logo. Que el recorte muestre un poco más de foto no se nota; un
+título cortado, sí.
+
 **La tapa y el retrato guardan su archivo de origen en el bucket privado**
 (`sitio-originales/`, anotado en `hero.origenKey` y `sobre.origenKey`). Sin eso,
 cambiar la medida obligaba a pedirle a Santi que volviera a subir la imagen,
 porque de lo subido sólo quedaba la versión ya achicada. Pasó una vez, al
 corregir la tapa borrosa. Cuando la tapa se elige desde una foto de un partido,
-el origen es el original de esa foto.
+el origen es el original de esa foto. Es además lo que permite acomodar el
+recorte sin volver a subir nada: el panel se la pide al servidor por
+`GET /api/admin/contenido/imagen?campo=tapa`, que la sirve desde el bucket
+privado y sólo a Santi.
 
 **Los textos del sitio los escribe Santi desde el panel, no viven en el
 código.** Están en `src/lib/contenido.ts`, guardados en la tabla `Ajuste` —una

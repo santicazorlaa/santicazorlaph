@@ -6,6 +6,7 @@ import sharp from "sharp";
 import type { OverlayOptions, Sharp } from "sharp";
 
 import { leerAjustesDeFoto, type AjustesDeFoto } from "./ajustes";
+import { acotar, encuadreCompleto, enPixeles, type Encuadre, type Formato } from "./encuadre";
 import { leerMarca } from "./marca";
 import type { Slot } from "./marca-slots";
 
@@ -40,7 +41,9 @@ const CALIDAD_THUMB = 72;
 /// arranca en 1440 y sigue para arriba: la imagen se estiraba a más del doble
 /// de su tamaño. Una tapa borrosa es peor que no tener tapa, porque lo primero
 /// que dice de un fotógrafo es que sus fotos se ven mal.
-const TAPA_ANCHO = 1920;
+///
+/// Las medidas exactas de cada formato viven en `encuadre.ts`, porque las
+/// comparte con el editor del panel.
 const CALIDAD_TAPA = 60;
 
 /// Las fotos del portfolio. Más grandes que una portada porque tienen otro
@@ -332,8 +335,32 @@ export function renderPortada(original: Buffer) {
  * dura que la de una preview— y en que es una sola foto de todo el sitio,
  * elegida por Santi, y no una por partido.
  */
-export function renderTapa(original: Buffer) {
-  return limpia(original, TAPA_ANCHO, CALIDAD_TAPA);
+/**
+ * La tapa, recortada al pedazo que eligió Santi y con la medida exacta del
+ * formato que se le pida (la franja de escritorio o el rectángulo de celular).
+ *
+ * Sin encuadre guardado recorta el centro, que es lo que hacía el navegador
+ * solo. La diferencia es que ahora se puede elegir otra cosa.
+ */
+export async function renderTapa(
+  original: Buffer,
+  formato: Formato,
+  encuadre: Encuadre | null,
+) {
+  // Se aplica la orientación de la cámara y recién ahí se mide. Si se midiera
+  // antes, una foto tomada de costado daría el ancho y el alto cambiados y el
+  // recorte caería en cualquier lado.
+  const derecha = await sharp(original, { failOn: "none" }).rotate().toBuffer();
+  const imagen = sharp(derecha, { failOn: "none" });
+  const { width = 0, height = 0 } = await imagen.metadata();
+
+  const recorte = encuadre ?? encuadreCompleto(width, height, formato);
+
+  return imagen
+    .extract(enPixeles(acotar(recorte), width, height))
+    .resize({ width: formato.ancho, height: formato.alto, fit: "cover" })
+    .jpeg({ quality: CALIDAD_TAPA, progressive: true, mozjpeg: true })
+    .toBuffer();
 }
 
 /// Una foto del portfolio de la portada. Sin marca de agua: un portfolio con

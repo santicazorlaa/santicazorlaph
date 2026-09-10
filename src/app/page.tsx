@@ -69,26 +69,46 @@ export default async function Home() {
   // La foto grande del encabezado: la que Santi eligió, y si no eligió ninguna,
   // la portada del partido más nuevo. Nunca queda un encabezado vacío.
   const tapa = contenido["hero.fotoKey"] || eventos.find((e) => e.coverKey)?.coverKey || null;
+  // El recorte alto, para el celular. Sólo existe si la tapa la eligió Santi:
+  // la portada de un partido que entra de suplente viene con un solo recorte.
+  const tapaCelular = contenido["hero.fotoKey"] ? contenido["hero.fotoKeyCelular"] : "";
 
   return (
     <div>
-      <section className="relative border-b border-line overflow-hidden">
+      <section
+        className={`relative border-b border-line overflow-hidden flex items-end ${
+          // La altura sale de la misma proporción con la que Santi encuadró la
+          // foto en el panel (3/4 en el celular, 12/5 en la computadora), así
+          // que lo que acomodó ahí es lo que se ve acá.
+          //
+          // Va como alto *mínimo* y no como proporción fija a propósito: con
+          // una proporción fija, un titular largo no agrandaba la sección sino
+          // que se salía por arriba y quedaba cortado abajo del logo. Que el
+          // recorte muestre un poco más de foto no se nota; un título cortado,
+          // sí.
+          tapa ? "min-h-[133.33vw] md:min-h-[41.67vw]" : ""
+        }`}
+      >
         {tapa && (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={publicUrl(tapa)}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-              fetchPriority="high"
-            />
+            <picture>
+              {tapaCelular && (
+                <source media="(max-width: 767px)" srcSet={publicUrl(tapaCelular)} />
+              )}
+              <img
+                src={publicUrl(tapa)}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                fetchPriority="high"
+              />
+            </picture>
             {/* El degradado no es decoración: sin él el titular blanco cae sobre
                 una foto de contraste impredecible y deja de leerse. */}
             <div className="absolute inset-0 bg-gradient-to-t from-ground via-ground/85 to-ground/45" />
           </>
         )}
 
-        <div className="relative mx-auto max-w-6xl px-5 py-24 sm:py-36">
+        <div className="relative w-full mx-auto max-w-6xl px-5 py-20 sm:py-24">
           <h1 className="titulo text-5xl sm:text-7xl max-w-3xl text-balance">
             {contenido["hero.titular"]}
           </h1>

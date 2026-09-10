@@ -11,6 +11,7 @@ import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural } from "@/lib/format";
 import { guardarContenido, leerContenido } from "@/lib/contenido";
 import { deleteObject, getObject, publicUrl, putObject } from "@/lib/storage";
+import { TAPA_CELULAR, TAPA_ESCRITORIO } from "@/lib/encuadre";
 import { renderPortada, renderPortfolio, renderTapa } from "@/lib/watermark";
 
 export const dynamic = "force-dynamic";
@@ -157,17 +158,38 @@ async function usarDeTapa(formData: FormData) {
   });
   if (!foto) return;
 
-  const anterior = (await leerContenido())["hero.fotoKey"];
+  const contenido = await leerContenido();
   const original = await getObject("private", foto.originalKey);
-  const key = `sitio/hero-fotoKey.${Date.now().toString(36)}.jpg`;
-  await putObject("public", key, await renderTapa(original), "image/jpeg");
+  const sello = Date.now().toString(36);
 
-  // El original de la foto queda como origen de la tapa: si algún día cambia
-  // la medida con la que se publica, se rehace desde acá sin tocar el panel.
-  await guardarContenido({ "hero.fotoKey": key, "hero.origenKey": foto.originalKey });
+  // Los dos recortes, centrados. Desde acá se elige la foto, no cómo se
+  // encuadra: eso se acomoda después en el panel de contenido, que muestra
+  // cómo va a quedar en cada pantalla.
+  const key = `sitio/hero-fotoKey.${sello}.jpg`;
+  const keyCelular = `sitio/hero-fotoKeyCelular.${sello}.jpg`;
+  await putObject("public", key, await renderTapa(original, TAPA_ESCRITORIO, null), "image/jpeg");
+  await putObject(
+    "public",
+    keyCelular,
+    await renderTapa(original, TAPA_CELULAR, null),
+    "image/jpeg",
+  );
 
-  if (anterior && anterior !== key && anterior.startsWith("sitio/")) {
-    await deleteObject("public", anterior).catch(() => {});
+  // El original de la foto queda como origen de la tapa: es de donde salen los
+  // recortes cuando Santi los acomoda, sin tener que subir nada. Los encuadres
+  // que hubiera se limpian, porque eran de otra foto.
+  await guardarContenido({
+    "hero.fotoKey": key,
+    "hero.fotoKeyCelular": keyCelular,
+    "hero.origenKey": foto.originalKey,
+    "hero.encuadreEscritorio": "",
+    "hero.encuadreCelular": "",
+  });
+
+  for (const anterior of [contenido["hero.fotoKey"], contenido["hero.fotoKeyCelular"]]) {
+    if (anterior && anterior !== key && anterior.startsWith("sitio/")) {
+      await deleteObject("public", anterior).catch(() => {});
+    }
   }
 
   revalidatePath(`/admin/evento/${foto.eventId}`);

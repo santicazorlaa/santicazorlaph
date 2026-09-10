@@ -19,7 +19,10 @@ export const CLAVES = [
   "hero.titular",
   "hero.bajada",
   "hero.fotoKey",
+  "hero.fotoKeyCelular",
   "hero.origenKey",
+  "hero.encuadreEscritorio",
+  "hero.encuadreCelular",
   "sobre.titulo",
   "sobre.texto",
   "sobre.fotoKey",
@@ -46,11 +49,19 @@ const DEFECTOS: Record<Clave, string> = {
   "hero.bajada":
     "Entrá al partido que jugaste, elegí las fotos que te gusten y llevátelas en alta resolución, sin marca de agua. Se descargan al instante, apenas se acredita el pago.",
   "hero.fotoKey": "",
+  // La misma tapa recortada alta, para el celular. Son dos archivos porque son
+  // dos recortes distintos de la misma foto, no dos tamaños de lo mismo.
+  "hero.fotoKeyCelular": "",
   // Guarda dónde quedó el archivo tal como se subió, en el bucket privado. Es
   // lo que permite volver a generar la imagen con otra medida —como pasó al
   // descubrir que la tapa se veía borrosa— sin pedirle a Santi que la suba de
-  // nuevo.
+  // nuevo, y es también de donde salen los dos recortes cada vez que los
+  // cambia.
   "hero.origenKey": "",
+  // Qué pedazo de la foto se ve en cada pantalla, en fracciones ("x,y,w,h").
+  // Vacío significa "el centro", que es lo que hacía el navegador solo.
+  "hero.encuadreEscritorio": "",
+  "hero.encuadreCelular": "",
   "sobre.titulo": "",
   "sobre.texto": "",
   "sobre.fotoKey": "",
