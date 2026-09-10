@@ -236,7 +236,15 @@ export default async function AdminPage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-5xl px-5 py-12">
       <div className="flex flex-wrap items-baseline justify-between gap-4 mb-10">
-        <h1 className="titulo text-4xl">Panel</h1>
+        <div className="flex flex-wrap items-baseline gap-6">
+          <h1 className="titulo text-4xl">Panel</h1>
+          <Link
+            href="/admin/contenido"
+            className="etiqueta text-muted hover:text-accent transition-colors"
+          >
+            Contenido del sitio →
+          </Link>
+        </div>
         <p className="text-sm text-muted tabular-nums">
           {plural(ventas._count, "venta", "ventas")} · {precio(ventas._sum.totalArs ?? 0)}
           <span className="text-line"> · </span>

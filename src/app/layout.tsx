@@ -3,7 +3,10 @@ import { Inter, Inter_Tight } from "next/font/google";
 
 import { CartProvider } from "@/components/cart-context";
 import { leerEscalones } from "@/lib/ajustes";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { WhatsappFlotante } from "@/components/whatsapp-flotante";
+import { leerContenido, linkWhatsapp } from "@/lib/contenido";
 import { siteName, siteUrl } from "@/lib/env";
 
 import "./globals.css";
@@ -36,8 +39,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Se leen acá, una sola vez, porque el carrito vive en todas las pantallas.
-  const escalones = await leerEscalones();
+  // Se leen acá, una sola vez, porque el carrito y el pie viven en todas las
+  // pantallas.
+  const [escalones, contenido] = await Promise.all([leerEscalones(), leerContenido()]);
+  const whatsapp = linkWhatsapp(contenido["contacto.whatsapp"], contenido["contacto.mensaje"]);
 
   return (
     <html lang="es" className={`${inter.variable} ${interTight.variable}`}>
@@ -45,14 +50,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <CartProvider escalones={escalones}>
           <SiteHeader />
           <main className="flex-1">{children}</main>
-          <footer className="border-t border-line mt-24">
-            <div className="mx-auto max-w-6xl px-5 py-8 flex flex-wrap gap-4 justify-between items-center text-sm text-muted">
-              <span>
-                © {new Date().getFullYear()} {siteName}
-              </span>
-              <span className="etiqueta">Tucumán, Argentina</span>
-            </div>
-          </footer>
+          <SiteFooter contenido={contenido} />
+          {whatsapp && <WhatsappFlotante href={whatsapp} />}
         </CartProvider>
       </body>
     </html>

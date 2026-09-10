@@ -9,8 +9,9 @@ import { leerEscalones } from "@/lib/ajustes";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural } from "@/lib/format";
+import { guardarContenido, leerContenido } from "@/lib/contenido";
 import { deleteObject, getObject, publicUrl, putObject } from "@/lib/storage";
-import { renderPortada } from "@/lib/watermark";
+import { renderPortada, renderTapa } from "@/lib/watermark";
 
 export const dynamic = "force-dynamic";
 /// Elegir portada baja el original del bucket y lo vuelve a procesar, que tarda
@@ -104,6 +105,73 @@ async function usarDePortada(formData: FormData) {
 }
 
 
+/**
+ * Marca o desmarca una foto para el portfolio de la portada.
+ *
+ * Al marcarla se genera una versión limpia y chica, del mismo tamaño que una
+ * portada: un portfolio con marca de agua no muestra nada, pero a 500 px es
+ * mirar y no llevarse. Al desmarcarla el archivo se borra, así el bucket no
+ * junta versiones sin marca de fotos que ya no se muestran.
+ */
+async function alternarPortfolio(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const photoId = String(formData.get("photoId") ?? "");
+  const foto = await db.photo.findUnique({
+    where: { id: photoId },
+    select: { originalKey: true, eventId: true, destacada: true, portfolioKey: true },
+  });
+  if (!foto) return;
+
+  if (foto.destacada) {
+    await db.photo.update({
+      where: { id: photoId },
+      data: { destacada: false, portfolioKey: null },
+    });
+    if (foto.portfolioKey) await deleteObject("public", foto.portfolioKey).catch(() => {});
+  } else {
+    const original = await getObject("private", foto.originalKey);
+    const key = `portfolio/${photoId}.${Date.now().toString(36)}.jpg`;
+    await putObject("public", key, await renderPortada(original), "image/jpeg");
+    await db.photo.update({
+      where: { id: photoId },
+      data: { destacada: true, portfolioKey: key },
+    });
+  }
+
+  revalidatePath(`/admin/evento/${foto.eventId}`);
+  revalidatePath("/");
+}
+
+/// Usa esta foto de fondo del encabezado del sitio. Sale del original, así que
+/// queda mejor que subir una imagen ya achicada desde el panel.
+async function usarDeTapa(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const photoId = String(formData.get("photoId") ?? "");
+  const foto = await db.photo.findUnique({
+    where: { id: photoId },
+    select: { originalKey: true, eventId: true },
+  });
+  if (!foto) return;
+
+  const anterior = (await leerContenido())["hero.fotoKey"];
+  const original = await getObject("private", foto.originalKey);
+  const key = `sitio/hero-fotoKey.${Date.now().toString(36)}.jpg`;
+  await putObject("public", key, await renderTapa(original), "image/jpeg");
+
+  await guardarContenido({ "hero.fotoKey": key });
+
+  if (anterior && anterior !== key && anterior.startsWith("sitio/")) {
+    await deleteObject("public", anterior).catch(() => {});
+  }
+
+  revalidatePath(`/admin/evento/${foto.eventId}`);
+  revalidatePath("/", "layout");
+}
+
 export default async function AdminEventoPage({ params }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
   const { id } = await params;
@@ -115,7 +183,7 @@ export default async function AdminEventoPage({ params }: Props) {
       photos: {
         orderBy: { createdAt: "desc" },
         take: 60,
-        select: { id: true, code: true, thumbKey: true },
+        select: { id: true, code: true, thumbKey: true, destacada: true },
       },
     },
   });
@@ -261,7 +329,14 @@ export default async function AdminEventoPage({ params }: Props) {
 
       {evento.photos.length > 0 && (
         <section className="mt-12">
-          <h2 className="etiqueta text-muted mb-4">Últimas cargadas</h2>
+          <h2 className="etiqueta text-muted mb-1">Últimas cargadas</h2>
+          <p className="text-sm text-muted mb-4 max-w-prose">
+            <span className="text-ink">Portada</span> es la foto que representa al
+            partido. <span className="text-ink">Portfolio</span> la suma a la
+            selección de tus mejores fotos, abajo en la página principal.{" "}
+            <span className="text-ink">Tapa</span> la pone de fondo del encabezado del
+            sitio, detrás del título. Las tres salen sin marca de agua y en chico.
+          </p>
           <ul className="grid gap-3 grid-cols-3 sm:grid-cols-5 lg:grid-cols-6">
             {evento.photos.map((photo) => {
               const esPortada = evento.coverKey?.startsWith(`portada/${id}/${photo.id}.`);
@@ -280,21 +355,45 @@ export default async function AdminEventoPage({ params }: Props) {
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="flex items-baseline justify-between gap-2 mt-1">
+                  <div className="mt-1">
                     <span className="etiqueta text-[0.6rem] text-muted">#{photo.code}</span>
-                    {esPortada ? (
-                      <span className="etiqueta text-[0.6rem] text-accent">Portada</span>
-                    ) : (
-                      <form action={usarDePortada}>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                      {esPortada ? (
+                        <span className="etiqueta text-[0.6rem] text-accent">Portada</span>
+                      ) : (
+                        <form action={usarDePortada}>
+                          <input type="hidden" name="photoId" value={photo.id} />
+                          <button
+                            type="submit"
+                            className="etiqueta text-[0.6rem] text-muted hover:text-accent transition-colors"
+                          >
+                            Portada
+                          </button>
+                        </form>
+                      )}
+                      <form action={alternarPortfolio}>
+                        <input type="hidden" name="photoId" value={photo.id} />
+                        <button
+                          type="submit"
+                          className={`etiqueta text-[0.6rem] transition-colors ${
+                            photo.destacada
+                              ? "text-accent hover:text-danger"
+                              : "text-muted hover:text-accent"
+                          }`}
+                        >
+                          {photo.destacada ? "En portfolio ✕" : "Portfolio"}
+                        </button>
+                      </form>
+                      <form action={usarDeTapa}>
                         <input type="hidden" name="photoId" value={photo.id} />
                         <button
                           type="submit"
                           className="etiqueta text-[0.6rem] text-muted hover:text-accent transition-colors"
                         >
-                          Portada
+                          Tapa
                         </button>
                       </form>
-                    )}
+                    </div>
                   </div>
                 </li>
               );

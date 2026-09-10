@@ -32,6 +32,12 @@ const PREVIEW_LADO_MAYOR = 820;
 /// más que otra para cómo se muestra—, aplicada a otra forma de mostrar.
 const CALIDAD_THUMB = 72;
 
+/// La tapa del sitio: se ve de lado a lado de la pantalla, así que necesita más
+/// ancho que una portada. Va con una compresión más dura para compensar: abajo
+/// de un degradado oscuro no se nota, y suelta la foto no sirve de mucho.
+const TAPA_ANCHO = 1000;
+const CALIDAD_TAPA = 58;
+
 /// Archivos que vienen con el proyecto, en negativo porque la marca se aplica
 /// en blanco sobre la foto. De cada slot se usa el primero que exista.
 const MARCAS_POR_DEFECTO: Record<Slot, readonly string[]> = {
@@ -296,6 +302,23 @@ export function renderPortada(original: Buffer) {
     .rotate() // respeta la orientación EXIF antes de descartar la metadata
     .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
     .jpeg({ quality: CALIDAD_THUMB, progressive: true, mozjpeg: true })
+    .toBuffer();
+}
+
+/**
+ * La foto grande del encabezado de la portada, que se ve a lo ancho de toda la
+ * pantalla y siempre debajo de un degradado oscuro y del título.
+ *
+ * Es más grande que una portada porque a 500 px se vería borrosa de lado a lado
+ * y quedaría peor que no tenerla. La compensación está en la compresión —más
+ * dura que la de una preview— y en que es una sola foto de todo el sitio,
+ * elegida por Santi, y no una por partido.
+ */
+export function renderTapa(original: Buffer) {
+  return sharp(original, { failOn: "none" })
+    .rotate()
+    .resize({ width: TAPA_ANCHO, withoutEnlargement: true })
+    .jpeg({ quality: CALIDAD_TAPA, progressive: true, mozjpeg: true })
     .toBuffer();
 }
 

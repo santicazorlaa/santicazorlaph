@@ -57,11 +57,23 @@ model Photo {
   lens    String?
   takenAt DateTime?
 
+  /// Elegida a mano para el portfolio de la portada. Es una selección chica y
+  /// curada: lo que le muestra el nivel de Santi a un organizador que no va a
+  /// mirar 5.000 fotos de un partido.
+  destacada Boolean @default(false)
+  /// Versión limpia y chica de la foto destacada, del mismo tamaño que una
+  /// portada. Sin marca de agua —un portfolio con marca no muestra nada— pero
+  /// a 500 px, que es mirar y no llevarse.
+  portfolioKey String?
+  /// Para ordenar el portfolio a gusto. Menor primero.
+  ordenPortfolio Int @default(0)
+
   createdAt DateTime @default(now())
 
   orderItems OrderItem[]
 
   @@index([eventId, takenAt])
+  @@index([destacada, ordenPortfolio])
 }
 
 model Order {

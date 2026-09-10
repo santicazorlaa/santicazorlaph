@@ -140,6 +140,33 @@ con la marca encima no invita. El riesgo se acota por tamaño: sale a 500 px y
 con la misma compresión que una miniatura, o sea una sola foto chica por
 partido. Agrandarla o mejorarle la calidad sería regalar una foto de verdad.
 
+**Hay tres imágenes limpias, y cada una tiene su medida por un motivo.** La
+portada del partido (500 px), las del portfolio (500 px, la misma receta) y la
+tapa del sitio (1000 px, calidad 58). La tapa es más grande porque se ve de lado
+a lado de la pantalla y a 500 px se vería borrosa; se compensa con una
+compresión más dura y con que es una sola foto de todo el sitio, siempre debajo
+de un degradado oscuro. Subirle el tamaño o la calidad a cualquiera de las tres
+es regalar una foto.
+
+**Los textos del sitio los escribe Santi desde el panel, no viven en el
+código.** Están en `src/lib/contenido.ts`, guardados en la tabla `Ajuste` —una
+fila por texto—, y se editan en `/admin/contenido`. La regla que ordena todo
+eso: **lo que está vacío no se muestra**. La sección entera desaparece en vez de
+salir con relleno, así el sitio nunca promete algo que Santi no dijo. Sumar una
+sección nueva es sumar una clave en `CLAVES` y un `<textarea>` con ese nombre;
+no hay que migrar la base ni tocar el home.
+
+**La sección para organizadores y marcas es una puerta que Santi quiere abrir,
+no un servicio que ya presta.** Por eso sale vacía de fábrica y la escribe él:
+el sitio no puede prometer una cobertura con entrega en tiempo real que nunca se
+hizo. Es, igual, el camino para dejar de depender de vender foto por foto.
+
+**La tapa y el retrato se suben achicados desde el navegador.** El mismo motivo
+que las fotos de los partidos: Vercel rechaza cualquier petición de más de
+4,5 MB. Como acá es una sola imagen, alcanza con achicarla en el navegador antes
+de mandarla (`subir-imagen.tsx`); el servidor la vuelve a procesar igual, porque
+es lo único que garantiza con qué medida sale al aire.
+
 **La grilla de fotos reparte siempre desde la primera.** Cada foto va a la
 columna más corta mirando sólo las anteriores, así al traer más fotos las que ya
 estaban caen en el mismo lugar. Si se dejara balancear las columnas al navegador
@@ -237,9 +264,13 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 Ya está todo publicado. Lo que queda:
 
-1. **La portada del partido quedó sin elegir.** La función está y anda; nadie la
-   usó todavía, así que en la principal se sigue viendo la primera foto con
-   marca de agua.
+1. **El sitio nuevo está sin llenar.** En septiembre de 2026 el home pasó de ser
+   una lista de partidos a tener encabezado con foto, cómo funciona, quién soy,
+   servicios para organizadores, portfolio, WhatsApp y legales. Todo eso se
+   escribe en `/admin/contenido` y **hoy está vacío**, así que esas secciones no
+   aparecen. Falta que Santi cargue su historia, el WhatsApp, las redes y los
+   textos legales, elija la tapa y marque las fotos del portfolio. Lo mismo con
+   la portada de cada partido, que sigue sin elegirse.
 2. **Por qué se crearon seis partidos duplicados.** Ya se borraron, pero la
    causa sigue ahí: lo más probable es que el formulario de "Nuevo partido" no
    dé señal de que ya se envió y se pueda apretar dos veces.
