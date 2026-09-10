@@ -188,11 +188,15 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   /* Quieta, y a cambio se puede recorrer a mano: sacar el movimiento no puede
-     significar esconder la mitad del portfolio. */
+     significar esconder la mitad del portfolio.
+
+     El scroll de respaldo va sólo mientras manda esta animación —o sea,
+     mientras el motor de JavaScript no arrancó—. Con el motor andando, la
+     cinta se recorre arrastrándola y un scroll encima pelearía con eso. */
   .cinta-portfolio {
     animation: none;
   }
-  .cinta-portfolio-marco {
+  .cinta-portfolio-marco:has(.cinta-portfolio) {
     overflow-x: auto;
   }
 }

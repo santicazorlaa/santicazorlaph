@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export type FotoDeVisor = {
   id: string;
@@ -26,13 +26,34 @@ export function VisorPortfolio({
   indice,
   alCerrar,
   alCambiar,
+  fase = "abierto",
+  refFoto,
 }: {
   fotos: FotoDeVisor[];
   indice: number;
   alCerrar: () => void;
   alCambiar: (indice: number) => void;
+  /// En qué momento del vuelo está. Mientras la foto viaja entre la cinta y
+  /// acá, la de adentro del visor se esconde: si no, se verían las dos, la que
+  /// vuela y la que ya llegó. El fondo en cambio aparece desde el primer
+  /// instante y se va antes de que la foto aterrice, así el visor se abre y se
+  /// cierra alrededor del vuelo en vez de después.
+  fase?: "entrando" | "abierto" | "saliendo";
+  /// Deja ver desde afuera dónde quedó la foto grande. Es el destino del vuelo,
+  /// y se toma de acá en vez de recalcularlo para que sea exactamente el mismo
+  /// lugar: si fueran dos cuentas, la foto aterrizaría cerca pero no encima.
+  refFoto?: React.Ref<HTMLImageElement>;
 }) {
   const foto = fotos[indice];
+  const [fondoPuesto, setFondoPuesto] = useState(false);
+
+  // El fondo entra por transición, así que tiene que empezar apagado y
+  // encenderse en el cuadro siguiente: montándolo ya encendido no habría nada
+  // que animar.
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setFondoPuesto(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
 
   useEffect(() => {
     const teclas = (e: KeyboardEvent) => {
@@ -57,17 +78,26 @@ export function VisorPortfolio({
 
   return (
     <div
-      className="visor-portfolio fixed inset-0 z-50 grid place-items-center p-4 sm:p-10 bg-ground/85 backdrop-blur-xl"
+      className="visor-portfolio fixed inset-0 z-50 grid place-items-center p-4 sm:p-10"
       onClick={alCerrar}
       role="dialog"
       aria-modal="true"
       aria-label={foto.titulo || "Foto del portfolio"}
     >
+      {/* El fondo va aparte y no sobre el contenedor entero, porque tiene que
+          poder desvanecerse por su cuenta mientras la foto todavía está
+          volando. */}
+      <div
+        aria-hidden
+        className={`absolute inset-0 bg-ground/85 backdrop-blur-xl transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+          fondoPuesto && fase !== "saliendo" ? "opacity-100" : "opacity-0"
+        }`}
+      />
       <button
         type="button"
         onClick={alCerrar}
         aria-label="Cerrar"
-        className="absolute top-4 right-4 z-10 w-11 h-11 grid place-items-center rounded-full border border-line bg-ground/70 text-2xl leading-none con-mouse:hover:border-accent transition-colors"
+        className="absolute top-4 right-4 z-20 w-11 h-11 grid place-items-center rounded-full border border-line bg-ground/70 text-2xl leading-none con-mouse:hover:border-accent transition-colors"
       >
         ×
       </button>
@@ -84,10 +114,14 @@ export function VisorPortfolio({
 
       {/* Frena el clic para que tocar la foto no cierre el visor: cerrar es lo
           que pasa al tocar *afuera*. */}
-      <figure onClick={(e) => e.stopPropagation()} className="max-h-full">
+      <figure
+        onClick={(e) => e.stopPropagation()}
+        className={`max-h-full relative ${fase === "abierto" ? "" : "invisible"}`}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={foto.id}
+          ref={refFoto}
           src={foto.urlGrande}
           alt={foto.titulo}
           width={foto.ancho}
@@ -117,7 +151,12 @@ function Flecha({
         alTocar();
       }}
       aria-label={lado === "izquierda" ? "Foto anterior" : "Foto siguiente"}
-      className={`absolute top-1/2 -translate-y-1/2 z-10 w-11 h-11 grid place-items-center rounded-full border border-line bg-ground/70 text-xl leading-none con-mouse:hover:border-accent transition-colors ${
+      // En el celular no se muestran. La pantalla es angosta y las flechas
+      // caen justo encima de la foto —que es lo único que hay que mirar—,
+      // tapándole los costados. Ahí se pasa de foto cerrando y abriendo otra,
+      // que en una pantalla táctil es un gesto más natural que apuntarle a un
+      // botón de once píxeles pegado al borde.
+      className={`absolute top-1/2 -translate-y-1/2 z-20 w-11 h-11 hidden sm:grid place-items-center rounded-full border border-line bg-ground/70 text-xl leading-none con-mouse:hover:border-accent transition-colors ${
         lado === "izquierda" ? "left-3" : "right-3"
       }`}
     >
