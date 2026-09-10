@@ -168,10 +168,22 @@ export default async function Home() {
               </p>
               <ol className="grid gap-8 sm:grid-cols-3">
                 {pasos.map((paso, i) => (
-                  <li key={i}>
-                    <span className="cifra text-accent text-4xl">{i + 1}</span>
-                    <h3 className="titulo text-xl mt-3">{paso.titulo}</h3>
-                    {paso.detalle && <p className="mt-2 text-muted">{paso.detalle}</p>}
+                  <li key={i} className="flex flex-col justify-between">
+                    <div>
+                      <span className="cifra text-accent text-4xl">{i + 1}</span>
+                      <h3 className="titulo text-xl mt-3">{paso.titulo}</h3>
+                      {paso.detalle && <p className="mt-2 text-muted">{paso.detalle}</p>}
+                    </div>
+                    {i === 2 && (
+                      <div className="mt-4 pt-1">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/mercadopago-blanco.svg"
+                          alt="Mercado Pago"
+                          className="h-5 w-auto opacity-60"
+                        />
+                      </div>
+                    )}
                   </li>
                 ))}
               </ol>

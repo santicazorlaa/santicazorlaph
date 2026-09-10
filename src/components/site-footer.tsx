@@ -72,6 +72,14 @@ export function SiteFooter({ contenido }: { contenido: Contenido }) {
             Se cobra con MercadoPago: tarjeta de crédito o débito, transferencia o
             efectivo. Las fotos se descargan en alta resolución y sin marca de agua.
           </p>
+          <div className="mt-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/mercadopago-blanco.svg"
+              alt="Mercado Pago"
+              className="h-5 w-auto opacity-75 con-mouse:hover:opacity-100 transition-opacity"
+            />
+          </div>
           {(hayTerminos || hayPrivacidad) && (
             <ul className="flex flex-wrap gap-x-4 gap-y-1 mt-4 text-sm">
               {hayTerminos && (

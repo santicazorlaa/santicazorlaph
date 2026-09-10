@@ -68,11 +68,24 @@ export default async function CompraPage({ params }: Props) {
           podés volver cuando quieras y las fotos siguen acá.
         </p>
       ) : (
-        <p className="text-muted max-w-xl">
-          Si ya pagaste, puede tardar unos segundos en acreditarse. Actualizá esta página en
-          un momento. Te mandamos este mismo link a{" "}
-          <span className="text-ink">{order.email}</span>.
-        </p>
+        <div className="space-y-4 max-w-xl">
+          <p className="text-muted">
+            Si ya pagaste, puede tardar unos segundos en acreditarse. Actualizá esta página en
+            un momento. Te mandamos este mismo link a{" "}
+            <span className="text-ink">{order.email}</span>.
+          </p>
+          <div className="flex items-center gap-3 border border-line rounded-lg p-3.5 bg-surface max-w-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/mercadopago-blanco.svg"
+              alt="Mercado Pago"
+              className="h-5 w-auto opacity-75 shrink-0"
+            />
+            <p className="text-xs text-muted">
+              Esperando confirmación segura de pago de Mercado Pago…
+            </p>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-sm text-muted tabular-nums border-y border-line py-4">

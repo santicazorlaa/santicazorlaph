@@ -229,6 +229,19 @@ export function CartView() {
           <li>Descarga inmediata apenas se acredita.</li>
           <li>Resolución completa, sin marca de agua.</li>
         </ul>
+
+        <div className="mt-5 pt-4 border-t border-line flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-ink">Pago 100% seguro</p>
+            <p className="text-[0.65rem] text-muted">Procesado y protegido por Mercado Pago</p>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mercadopago-blanco.svg"
+            alt="Mercado Pago"
+            className="h-6 w-auto opacity-85 shrink-0"
+          />
+        </div>
       </aside>
     </div>
   );
