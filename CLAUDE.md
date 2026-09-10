@@ -415,7 +415,31 @@ mueven, así que conviene pasar por el panel después.
    y decidir qué pasa con la descarga de una orden devuelta. Todavía no pasó
    ninguna devolución.
 
-5. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
+5. **El sitio se siente más lento que antes y no avisa que te escuchó.** Es lo
+   que pidió Santi el 10 de septiembre de 2026, para arrancar la próxima
+   sesión. Son dos cosas distintas y conviene no mezclarlas:
+
+   - **Lo que tarda de verdad.** Hay que medir antes de tocar: qué pantallas
+     tardan y en qué se va el tiempo. Sospechosos conocidos: `/compra/[token]`
+     le pregunta a MercadoPago antes de dibujar nada cuando la orden está
+     pendiente; el home es `force-dynamic` en varios lados y consulta la base
+     en cada visita; la cinta del portfolio carga sus fotos de entrada a
+     propósito; y las animaciones de aparición al scrollear se suman a todo lo
+     anterior.
+   - **Lo que se siente lento aunque no lo sea.** Un botón que no cambia al
+     apretarlo, o un cambio de página sin ninguna señal, se vive como el sitio
+     colgado aunque tarde lo mismo. Falta una señal de "ya te escuché" en cada
+     acción: el botón de pagar ya se deshabilita, pero agregar al carrito,
+     cargar más fotos, los formularios del panel y sobre todo la navegación
+     entre pantallas no muestran nada. Next tiene `useLinkStatus` para el
+     estado de un link y `loading.tsx` para lo que se está trayendo; revisar
+     la documentación en `node_modules/next/dist/docs/` antes de escribir,
+     como pide `AGENTS.md`.
+
+   Lo segundo se nota más que lo primero y cuesta menos: conviene empezar por
+   ahí y medir lo demás con números antes de cambiarlo.
+
+6. Ideas para más adelante: búsqueda por selfie o por dorsal, "mis compras" con
    cuenta, aviso al jugador cuando se suben sus fotos, y la tarjeta de "pack
    completo" que quedó afuera del documento de ofertas porque depende de esos
    filtros.
