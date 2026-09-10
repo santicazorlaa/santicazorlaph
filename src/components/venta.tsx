@@ -21,7 +21,7 @@ export type FotoComprada = {
  *
  * Se abre y se cierra con una animación corta: la fila ya está en pantalla y lo
  * que cambia es su tamaño, así que el movimiento es lo que explica de dónde
- * salió el detalle. Con el sistema en "menos movimiento" no se anima nada.
+ * salió el detalle.
  */
 export function Venta({
   email,
@@ -109,7 +109,7 @@ export function Venta({
       {/* El truco de las dos filas de grilla (0fr → 1fr) es lo que permite
           animar el despliegue sin saber de antemano cuánto mide el contenido. */}
       <div
-        className={`grid transition-[grid-template-rows,opacity] duration-250 ease-out motion-reduce:transition-none ${
+        className={`grid transition-[grid-template-rows,opacity] duration-250 ease-out ${
           abierta ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
       >

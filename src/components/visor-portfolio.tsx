@@ -89,7 +89,7 @@ export function VisorPortfolio({
           volando. */}
       <div
         aria-hidden
-        className={`absolute inset-0 bg-ground/85 backdrop-blur-xl transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+        className={`absolute inset-0 bg-ground/85 backdrop-blur-xl transition-opacity duration-300 ease-out ${
           fondoPuesto && fase !== "saliendo" ? "opacity-100" : "opacity-0"
         }`}
       />

@@ -93,7 +93,7 @@ export function CartView() {
                   </div>
                   <button
                     onClick={() => cart.remove(item.photoId)}
-                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-ground/85 backdrop-blur-sm text-muted hover:text-danger transition-[color,transform] duration-150 ease-out active:scale-90 motion-reduce:active:scale-100 grid place-items-center text-lg leading-none"
+                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-ground/85 backdrop-blur-sm text-muted hover:text-danger transition-[color,transform] duration-150 ease-out active:scale-90 grid place-items-center text-lg leading-none"
                     aria-label={`Quitar la foto ${item.code}`}
                   >
                     ×
@@ -217,7 +217,7 @@ export function CartView() {
             type="submit"
             disabled={enviando}
             aria-busy={enviando}
-            className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 con-mouse:hover:opacity-90 active:scale-[0.98] motion-reduce:active:scale-100 transition-[opacity,transform] duration-150 ease-out disabled:opacity-50 disabled:cursor-progress inline-flex items-center justify-center"
+            className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 con-mouse:hover:opacity-90 active:scale-[0.98] transition-[opacity,transform] duration-150 ease-out disabled:opacity-50 disabled:cursor-progress inline-flex items-center justify-center"
           >
             {enviando ? "Abriendo el pago" : "Pagar con MercadoPago"}
             {enviando && <span aria-hidden className="senal-link senal-link-activa" />}

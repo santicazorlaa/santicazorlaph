@@ -126,14 +126,14 @@ export default async function Home() {
           <div className="mt-10 flex flex-wrap gap-3">
             <a
               href="#partidos"
-              className="etiqueta bg-accent-solid text-accent-ink rounded-full px-6 py-3.5 con-mouse:hover:opacity-90 active:scale-[0.97] transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none"
+              className="etiqueta bg-accent-solid text-accent-ink rounded-full px-6 py-3.5 con-mouse:hover:opacity-90 active:scale-[0.97] transition-[opacity,transform] duration-150 ease-out"
             >
               Buscar mi foto
             </a>
             {hayServicios && (
               <a
                 href="#servicios"
-                className="etiqueta border border-line rounded-full px-6 py-3.5 con-mouse:hover:border-accent active:scale-[0.97] transition-[border-color,transform] duration-150 ease-out motion-reduce:transition-none"
+                className="etiqueta border border-line rounded-full px-6 py-3.5 con-mouse:hover:border-accent active:scale-[0.97] transition-[border-color,transform] duration-150 ease-out"
               >
                 Contratar una cobertura
               </a>
@@ -273,7 +273,7 @@ export default async function Home() {
                 </div>
                 <Link
                   href="/portfolio"
-                  className="etiqueta border border-line rounded-full px-5 py-3 shrink-0 con-mouse:hover:border-accent active:scale-[0.97] transition-[border-color,transform] duration-150 ease-out motion-reduce:transition-none"
+                  className="etiqueta border border-line rounded-full px-5 py-3 shrink-0 con-mouse:hover:border-accent active:scale-[0.97] transition-[border-color,transform] duration-150 ease-out"
                 >
                   Ver todo →
                 </Link>

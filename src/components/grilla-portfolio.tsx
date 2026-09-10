@@ -70,7 +70,7 @@ function Columnas({
                   height={foto.alto}
                   loading="lazy"
                   decoding="async"
-                  className="w-full h-auto con-mouse:group-hover:scale-[1.02] transition-transform duration-300 ease-out motion-reduce:transition-none"
+                  className="w-full h-auto con-mouse:group-hover:scale-[1.02] transition-transform duration-300 ease-out"
                 />
               </button>
             </Aparecer>

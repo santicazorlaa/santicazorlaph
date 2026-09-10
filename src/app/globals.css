@@ -145,17 +145,6 @@ body {
   filter: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  /* Sin movimiento no hay entrada que valga: se muestra y listo. */
-  .aparece,
-  .palabra-entrante {
-    opacity: 1;
-    transform: none;
-    filter: none;
-    transition: none;
-  }
-}
-
 /* La cinta del portfolio: las fotos pasando de derecha a izquierda, sin fin.
    La lista va duplicada en el HTML, así que correrla media pista y volver a
    empezar es un salto invisible.
@@ -185,32 +174,6 @@ body {
    bajo el puntero, repartiéndose entre las fotos vecinas: la cinta sigue viva y
    además responde. Frenarla contestaba la misma pregunta cortando el
    movimiento; esto la contesta sin apagar nada. */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-
-  /* La cinta del portfolio es la única excepción de todo el sitio: se sigue
-     moviendo aunque el sistema pida menos movimiento.
-
-     Es una decisión de Santi, tomada sabiendo lo que implica: quien activa esa
-     preferencia muchas veces lo hace porque el movimiento le provoca mareo, y
-     la cinta es lo más grande que se mueve acá. Se deja anotado para que
-     alguien que la encuentre sepa que no es un olvido.
-
-     Hace falta repetir la duración con `!important` porque la regla de arriba
-     la aplasta a cero: sin esto, la cinta da una vuelta entera en una
-     centésima de segundo. Lo que se mueve por JavaScript —el desplazamiento,
-     la lupa y el vuelo de la foto— no pasa por acá: ese se maneja en
-     `cinta-portfolio.tsx` y tampoco mira la preferencia. */
-  .cinta-portfolio {
-    animation-duration: var(--duracion-cinta, 40s) !important;
-  }
-}
 
 /* La señal de "ya te escuché".
 
@@ -290,20 +253,6 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  /* Sin movimiento, la señal se muestra fija: sacar la animación no puede
-     significar sacar la respuesta al clic, que es justamente lo que faltaba. */
-  .senal-link-activa,
-  .velo-link-activo {
-    visibility: visible;
-    opacity: 1;
-    animation: none;
-  }
-  .hueco {
-    animation: none;
-  }
-}
-
 /* El contador del carrito cuando cambia de número.
 
    Agregar una foto ya cambiaba el botón de la grilla, pero el carrito está en
@@ -326,12 +275,6 @@ body {
   animation: entra-contador 260ms ease-out;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .entra-contador {
-    animation: none;
-  }
-}
-
 /* La misma espera, latiendo sobre algo que ya está en pantalla en vez de
    sumarle un punto al lado. La usa el botón del carrito, que es un ícono solo:
    ahí el punto reservaba su lugar y descentraba el ícono. Mismo retraso de
@@ -341,9 +284,3 @@ body {
   animation: senal-late 1s ease-in-out 120ms infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .late-esperando {
-    animation: none;
-    opacity: 0.6;
-  }
-}

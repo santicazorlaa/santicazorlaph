@@ -44,7 +44,7 @@ export function BotonEnvio({
       disabled={pending || disabled}
       aria-busy={pending}
       aria-label={etiquetaAccesible}
-      className={`etiqueta transition-[opacity,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 ${
+      className={`etiqueta transition-[opacity,transform] duration-150 ease-out active:scale-[0.98] ${
         pending ? "opacity-60 cursor-progress" : disabled ? "opacity-40 cursor-not-allowed" : ""
       } ${className}`}
     >

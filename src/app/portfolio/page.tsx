@@ -75,7 +75,7 @@ export default async function PortfolioPage() {
             href={whatsapp}
             target="_blank"
             rel="noopener noreferrer"
-            className="etiqueta bg-accent-solid text-accent-ink rounded-full px-7 py-4 inline-block mt-6 con-mouse:hover:opacity-90 active:scale-[0.97] transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none"
+            className="etiqueta bg-accent-solid text-accent-ink rounded-full px-7 py-4 inline-block mt-6 con-mouse:hover:opacity-90 active:scale-[0.97] transition-[opacity,transform] duration-150 ease-out"
           >
             Hablemos por WhatsApp
           </a>

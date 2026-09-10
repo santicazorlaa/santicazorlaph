@@ -233,9 +233,19 @@ al body en un contenedor de scroll y rompe todo lo que se queda pegado.
 `ease-out`, lo que se mueve en pantalla con `ease-in-out`, un color con `ease`,
 y lo que se repite todo el día no se anima.** Las de interfaz duran menos de
 300ms; la aparición al scrollear dura 500ms porque acompaña al scroll en vez de
-responder a un clic. Todo lo animado es `transform` u `opacity` —lo demás obliga
-al navegador a recalcular la página en cada cuadro— y todo tiene su salida por
-`prefers-reduced-motion`.
+responder a un clic. Todo lo animado es `transform` u `opacity`: lo demás obliga
+al navegador a recalcular la página en cada cuadro.
+
+**El sitio ignora `prefers-reduced-motion` por completo.** No queda ni una regla
+ni una clase que la consulte, y así tiene que seguir: lo pidió Santi el 10 de
+septiembre de 2026 —"que no afecte en nada, nada de nada"— después de que se le
+explicara qué significa. Lo que significa es que alguien con sensibilidad al
+movimiento (mareo, vértigo, migraña) ve todas las animaciones igual y no tiene
+manera de bajarlas; el navegador ya le está diciendo al sitio que preferiría que
+no, y el sitio no escucha. Queda escrito para que el que lo encuentre sepa que
+**no es un olvido**, y para que si algún día se quiere volver atrás se sepa qué
+se está revirtiendo. Al sumar una animación nueva, no hace falta darle salida
+por esa preferencia: acá no se usa.
 
 **La aparición al scrollear (`aparecer.tsx`) también revela lo que el scroll se
 saltea.** Un `IntersectionObserver` solo no alcanza: entrando con un ancla o
@@ -307,34 +317,15 @@ fila**, no contra el principio de la cinta. Por eso, con la cinta quieta en
 cero, el motor no escribe nada y lo que se ve es exactamente lo que mandó el
 servidor: no hay salto al hidratar.
 
-**Cuidado con apoyarse en una transición de CSS para algo que la lógica
-necesita.** `globals.css` le pone `transition-duration: 0.01ms !important` a
-*todo* cuando el sistema pide menos movimiento. El apagado de la capa del vuelo
-usaba una transición y ahí se cumplía de golpe: la foto desaparecía antes de que
-React dibujara lo de abajo y quedaba el cuadro vacío. Por eso ese apagado va
-escrito a mano, cuadro a cuadro. **El síntoma es cruel de encontrar**: en una
-máquina sin la preferencia puesta no pasa nunca, así que se ve en la Mac o el
-teléfono de quien la tiene y no en el navegador donde uno prueba.
-
-**La cinta es la única parte del sitio que ignora la preferencia de menos
-movimiento.** Se desplaza, se acerca bajo el puntero y la foto vuela igual,
-aunque el sistema pida lo contrario. Lo pidió Santi el 10 de septiembre de 2026,
-después de que se le explicara que quien activa esa preferencia muchas veces lo
-hace porque el movimiento le provoca mareo, y que la cinta es lo más grande que
-se mueve en el sitio. Queda anotado para que el que lo encuentre sepa que **no
-es un olvido**: el resto del sitio sí la respeta.
-
-Son dos lugares y hay que tocar los dos: el motor de `cinta-portfolio.tsx`, que
-directamente no consulta la preferencia, y una regla en `globals.css` que le
-devuelve la duración a la animación de respaldo —el bloque global le pone
-`animation-duration: 0.01ms !important` a todo, así que sin esa excepción la
-cinta daba una vuelta entera en una centésima de segundo—.
-
-Un tiempo hubo en el motor un `return` cuando la preferencia estaba puesta, y
-eso dejaba la cinta completamente muerta: no se movía, no respondía al puntero y
-tampoco se podía recorrer, porque el `overflow-hidden` del marco tapaba el
-scroll que el CSS dejaba de respaldo. Media docena de fotos congeladas y sin
-salida.
+**El apagado de la capa del vuelo va escrito a mano y no con una transición de
+CSS.** No es capricho: una transición la puede acortar cualquier regla de la
+hoja de estilos, y si se cumple de golpe la foto desaparece antes de que React
+dibuje lo de abajo, dejando el cuadro vacío que se ve como un parpadeo. Pasó
+exactamente eso mientras existía la regla que apagaba las animaciones por
+`prefers-reduced-motion`. **El síntoma fue carísimo de encontrar**, porque en la
+máquina donde uno prueba no aparecía nunca y sí en la Mac y el teléfono de
+Santi. Escrito cuadro a cuadro, dura lo que tiene que durar y no depende de que
+ninguna otra regla se porte bien.
 
 **Con la cinta fuera de pantalla el bucle se apaga entero.** En la portada la
 cinta está bien abajo: sin esto, todo el rato que alguien pasa leyendo arriba

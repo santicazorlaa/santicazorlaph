@@ -178,7 +178,7 @@ export function Gallery({
           <button
             type="submit"
             disabled={buscando}
-            className="etiqueta border border-line rounded-md px-4 hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 disabled:opacity-50 disabled:cursor-progress"
+            className="etiqueta border border-line rounded-md px-4 hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 disabled:cursor-progress"
           >
             {buscando ? "Buscando…" : "Buscar"}
           </button>
@@ -250,7 +250,7 @@ export function Gallery({
                     type="button"
                     onClick={() => cart.toggle(toItem(photo))}
                     aria-pressed={enCarrito}
-                    className={`absolute inset-x-2 bottom-2 etiqueta rounded px-2 py-1.5 transition-[opacity,transform,background-color] duration-150 ease-out active:scale-[0.96] motion-reduce:active:scale-100 ${
+                    className={`absolute inset-x-2 bottom-2 etiqueta rounded px-2 py-1.5 transition-[opacity,transform,background-color] duration-150 ease-out active:scale-[0.96] ${
                       enCarrito
                         ? "bg-accent-solid text-accent-ink"
                         : "bg-ground/80 text-ink backdrop-blur-sm con-mouse:opacity-0 con-mouse:group-hover:opacity-100 con-mouse:focus-visible:opacity-100"
@@ -286,7 +286,7 @@ export function Gallery({
             onClick={cargarMas}
             disabled={loading}
             aria-busy={loading}
-            className="etiqueta border border-line rounded-full px-8 py-3 hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 disabled:cursor-progress inline-flex items-center"
+            className="etiqueta border border-line rounded-full px-8 py-3 hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-progress inline-flex items-center"
           >
             {loading ? "Trayendo más fotos" : "Cargar más fotos"}
             {loading && <span aria-hidden className="senal-link senal-link-activa" />}

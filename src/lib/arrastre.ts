@@ -45,9 +45,7 @@ export function crearArrastre({
   conInercia = true,
 }: {
   elemento: HTMLElement;
-  /// Si al soltar la cinta sigue de largo y frena sola. Se apaga cuando el
-  /// sistema pide menos movimiento: ahí la cinta se mueve lo que la mano la
-  /// movió y ni un píxel más.
+  /// Si al soltar la cinta sigue de largo y frena sola.
   conInercia?: boolean;
   /// Cuánto se movió la cinta, en píxeles. Positivo cuando la mano la lleva
   /// hacia la izquierda, que es el sentido en el que la cinta avanza sola.

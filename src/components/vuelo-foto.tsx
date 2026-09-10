@@ -107,12 +107,12 @@ export function VueloDeFoto({
     /// se queda un momento más apagándose encima.
     ///
     /// El apagado va cuadro a cuadro y **no** con una transición de CSS, aunque
-    /// una transición sería lo natural. El motivo: `globals.css` le pone
-    /// `transition-duration: 0.01ms !important` a todo cuando el sistema pide
-    /// menos movimiento, así que la transición se cumplía de golpe y la capa
-    /// desaparecía en el acto —antes de que React alcanzara a dibujar lo de
-    /// abajo—, dejando el cuadro vacío que se ve como un parpadeo. Escrito a
-    /// mano, el apagado dura lo que tiene que durar en cualquier máquina.
+    /// una transición sería lo natural. Con una transición, cualquier regla de
+    /// la hoja de estilos que le acorte la duración —había una que lo hacía— la
+    /// cumple de golpe: la capa desaparece en el acto, antes de que React
+    /// alcance a dibujar lo de abajo, y queda el cuadro vacío que se ve como un
+    /// parpadeo. Escrito a mano dura lo que tiene que durar, y no depende de
+    /// que nadie más se porte bien.
     ///
     /// Y arranca un cuadro después, no en el mismo: destapar lo de abajo es un
     /// cambio de estado de React, que se dibuja en el cuadro siguiente. Ese

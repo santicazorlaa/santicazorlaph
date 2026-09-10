@@ -148,7 +148,7 @@ function Tarjeta({
   return (
     <Link
       href={href}
-      className={`group border rounded-lg p-5 block transition-[border-color,transform] duration-150 ease-out active:scale-[0.99] motion-reduce:transition-none ${
+      className={`group border rounded-lg p-5 block transition-[border-color,transform] duration-150 ease-out active:scale-[0.99] ${
         destacada
           ? "border-accent/40 bg-accent/5 con-mouse:hover:border-accent"
           : "border-line con-mouse:hover:border-accent"

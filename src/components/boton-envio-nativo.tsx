@@ -52,7 +52,7 @@ export function BotonEnvioNativo({
       ref={ref}
       type="submit"
       aria-busy={pendiente}
-      className={`etiqueta transition-[opacity,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 ${
+      className={`etiqueta transition-[opacity,transform] duration-150 ease-out active:scale-[0.98] ${
         pendiente ? "opacity-60 cursor-progress pointer-events-none" : ""
       } ${className}`}
     >
