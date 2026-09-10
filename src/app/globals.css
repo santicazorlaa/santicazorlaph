@@ -88,6 +88,79 @@
   letter-spacing: -0.015em;
 }
 
+/* Lo que aparece al llegar a la pantalla. Ver `aparecer.tsx`.
+
+   Sube 16px y se hace visible en 500ms. Es más lento que cualquier botón del
+   sitio a propósito: no es la respuesta a un clic —donde una demora se siente
+   como lentitud— sino algo que acompaña el scroll, y ahí lo corto se lee como
+   un salto. */
+.aparece {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 500ms cubic-bezier(0.215, 0.61, 0.355, 1),
+    transform 500ms cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+.aparece-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Sin movimiento no hay entrada que valga: se muestra y listo. */
+  .aparece {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* La cinta del portfolio: las fotos pasando de derecha a izquierda, sin fin.
+   La lista va duplicada en el HTML, así que correrla media pista y volver a
+   empezar es un salto invisible.
+
+   Va en `linear` a propósito, que es lo contrario de lo que pide casi todo lo
+   demás del sitio: acá no hay nada entrando ni saliendo por una acción de
+   nadie, es un movimiento constante de fondo, y cualquier aceleración se leería
+   como un tirón. */
+@keyframes cinta-portfolio {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.cinta-portfolio {
+  animation: cinta-portfolio var(--duracion-cinta, 40s) linear infinite;
+  /* Sin `will-change`. Sería lo esperable para algo que se mueve, pero esta
+     pista mide varios miles de píxeles de ancho: pedirle al navegador que la
+     tenga permanentemente en una capa aparte es reservar muchísima memoria de
+     video para nada. Una animación de `transform` ya se compone sola. */
+}
+
+/* Se frena al pasar el mouse por encima: si algo llama la atención, lo primero
+   que se hace es querer mirarlo quieto. Sólo con mouse de verdad — en un
+   teléfono no hay "pasar por encima" y quedaría frenada para siempre. */
+@media (hover: hover) and (pointer: fine) {
+  .cinta-portfolio:hover {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Quieta, y a cambio se puede recorrer a mano: sacar el movimiento no puede
+     significar esconder la mitad del portfolio. */
+  .cinta-portfolio {
+    animation: none;
+  }
+  .cinta-portfolio-marco {
+    overflow-x: auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

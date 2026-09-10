@@ -1,3 +1,5 @@
+import { Aparecer } from "@/components/aparecer";
+import { CintaPortfolio } from "@/components/cinta-portfolio";
 import { ListaPartidos, type PartidoEnLista } from "@/components/lista-partidos";
 import { leerContenido, leerLineas, leerPasos, linkWhatsapp } from "@/lib/contenido";
 import { db } from "@/lib/db";
@@ -24,8 +26,17 @@ export default async function Home() {
     db.photo.findMany({
       where: { destacada: true, portfolioKey: { not: null } },
       orderBy: [{ ordenPortfolio: "asc" }, { createdAt: "desc" }],
-      take: 24,
-      select: { id: true, portfolioKey: true, event: { select: { title: true, category: true } } },
+      // La cinta carga sus fotos de entrada, así que el tope no es estético
+      // sino de peso. Un portfolio curado son quince o veinte fotos; más que
+      // eso ya no es una selección.
+      take: 16,
+      select: {
+        id: true,
+        portfolioKey: true,
+        width: true,
+        height: true,
+        event: { select: { title: true } },
+      },
     }),
   ]);
 
@@ -119,14 +130,14 @@ export default async function Home() {
           <div className="mt-10 flex flex-wrap gap-3">
             <a
               href="#partidos"
-              className="etiqueta bg-accent-solid text-accent-ink rounded-full px-6 py-3.5 hover:opacity-90 transition-opacity"
+              className="etiqueta bg-accent-solid text-accent-ink rounded-full px-6 py-3.5 con-mouse:hover:opacity-90 active:scale-[0.97] transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none"
             >
               Buscar mi foto
             </a>
             {hayServicios && (
               <a
                 href="#servicios"
-                className="etiqueta border border-line rounded-full px-6 py-3.5 con-mouse:hover:border-accent transition-colors"
+                className="etiqueta border border-line rounded-full px-6 py-3.5 con-mouse:hover:border-accent active:scale-[0.97] transition-[border-color,transform] duration-150 ease-out motion-reduce:transition-none"
               >
                 Contratar una cobertura
               </a>
@@ -154,44 +165,69 @@ export default async function Home() {
 
         {pasos.length > 0 && (
           <section id="como-funciona" className="py-16 border-t border-line scroll-mt-20">
-            <h2 className="titulo text-3xl sm:text-4xl mb-2">Cómo funciona</h2>
-            <p className="text-muted mb-10 max-w-xl">
-              Pagás sólo las fotos que elegís, y las tenés en el momento.
-            </p>
-            <ol className="grid gap-8 sm:grid-cols-3">
-              {pasos.map((paso, i) => (
-                <li key={i}>
-                  <span className="cifra text-accent text-4xl">{i + 1}</span>
-                  <h3 className="titulo text-xl mt-3">{paso.titulo}</h3>
-                  {paso.detalle && <p className="mt-2 text-muted">{paso.detalle}</p>}
-                </li>
-              ))}
-            </ol>
+            <Aparecer>
+              <h2 className="titulo text-3xl sm:text-4xl mb-2">Cómo funciona</h2>
+              <p className="text-muted mb-10 max-w-xl">
+                Pagás sólo las fotos que elegís, y las tenés en el momento.
+              </p>
+              <ol className="grid gap-8 sm:grid-cols-3">
+                {pasos.map((paso, i) => (
+                  <li key={i}>
+                    <span className="cifra text-accent text-4xl">{i + 1}</span>
+                    <h3 className="titulo text-xl mt-3">{paso.titulo}</h3>
+                    {paso.detalle && <p className="mt-2 text-muted">{paso.detalle}</p>}
+                  </li>
+                ))}
+              </ol>
+            </Aparecer>
           </section>
         )}
 
         {haySobre && (
           <section id="quien-soy" className="py-16 border-t border-line scroll-mt-20">
-            <div className="grid gap-10 md:grid-cols-[1fr_1.2fr] items-start">
-              {contenido["sobre.fotoKey"] && (
-                /* Sin proporción fija: la foto se muestra como es. Forzarla a
-                   vertical recortaba de prepo una foto apaisada, y no hay forma
-                   de saber de antemano cuál va a elegir Santi. */
-                <div className="bg-surface rounded-lg overflow-hidden border border-line">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={publicUrl(contenido["sobre.fotoKey"])}
-                    alt="Santi Cazorla"
-                    className="w-full h-auto"
-                    loading="lazy"
-                  />
+            <Aparecer>
+              <div className="grid gap-10 md:grid-cols-[1fr_1.2fr] items-start">
+                {contenido["sobre.fotoKey"] && (
+                  /* Sin proporción fija: la foto se muestra como es. Forzarla a
+                     vertical recortaba de prepo una foto apaisada, y no hay forma
+                     de saber de antemano cuál va a elegir Santi. */
+                  <div className="bg-surface rounded-lg overflow-hidden border border-line">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={publicUrl(contenido["sobre.fotoKey"])}
+                      alt="Santi Cazorla"
+                      className="w-full h-auto"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                <div className={contenido["sobre.fotoKey"] ? "" : "max-w-2xl"}>
+                  <h2 className="titulo text-3xl sm:text-4xl mb-6 text-balance">
+                    {contenido["sobre.titulo"] || "Quién soy"}
+                  </h2>
+                  {contenido["sobre.texto"]
+                    .split("\n")
+                    .map((p) => p.trim())
+                    .filter(Boolean)
+                    .map((parrafo, i) => (
+                      <p key={i} className="text-lg text-muted mb-4 max-w-prose">
+                        {parrafo}
+                      </p>
+                    ))}
                 </div>
-              )}
-              <div className={contenido["sobre.fotoKey"] ? "" : "max-w-2xl"}>
-                <h2 className="titulo text-3xl sm:text-4xl mb-6 text-balance">
-                  {contenido["sobre.titulo"] || "Quién soy"}
+              </div>
+            </Aparecer>
+          </section>
+        )}
+
+        {hayServicios && (
+          <section id="servicios" className="py-16 border-t border-line scroll-mt-20">
+            <Aparecer>
+              <div className="border border-line rounded-lg p-8 sm:p-12 bg-surface">
+                <h2 className="titulo text-3xl sm:text-4xl mb-4 text-balance">
+                  {contenido["servicios.titulo"] || "¿Organizás un evento?"}
                 </h2>
-                {contenido["sobre.texto"]
+                {contenido["servicios.texto"]
                   .split("\n")
                   .map((p) => p.trim())
                   .filter(Boolean)
@@ -200,76 +236,52 @@ export default async function Home() {
                       {parrafo}
                     </p>
                   ))}
+
+                {serviciosItems.length > 0 && (
+                  <ul className="grid gap-3 sm:grid-cols-2 mt-8">
+                    {serviciosItems.map((item, i) => (
+                      <li key={i} className="flex gap-3 items-start">
+                        <span className="text-accent mt-0.5 shrink-0" aria-hidden>
+                          —
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {whatsapp && (
+                  <a
+                    href={whatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="etiqueta inline-block mt-10 bg-accent-solid text-accent-ink rounded-full px-6 py-3.5 hover:opacity-90 transition-opacity"
+                  >
+                    Hablemos por WhatsApp
+                  </a>
+                )}
               </div>
-            </div>
-          </section>
-        )}
-
-        {hayServicios && (
-          <section id="servicios" className="py-16 border-t border-line scroll-mt-20">
-            <div className="border border-line rounded-lg p-8 sm:p-12 bg-surface">
-              <h2 className="titulo text-3xl sm:text-4xl mb-4 text-balance">
-                {contenido["servicios.titulo"] || "¿Organizás un evento?"}
-              </h2>
-              {contenido["servicios.texto"]
-                .split("\n")
-                .map((p) => p.trim())
-                .filter(Boolean)
-                .map((parrafo, i) => (
-                  <p key={i} className="text-lg text-muted mb-4 max-w-prose">
-                    {parrafo}
-                  </p>
-                ))}
-
-              {serviciosItems.length > 0 && (
-                <ul className="grid gap-3 sm:grid-cols-2 mt-8">
-                  {serviciosItems.map((item, i) => (
-                    <li key={i} className="flex gap-3 items-start">
-                      <span className="text-accent mt-0.5 shrink-0" aria-hidden>
-                        —
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {whatsapp && (
-                <a
-                  href={whatsapp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="etiqueta inline-block mt-10 bg-accent-solid text-accent-ink rounded-full px-6 py-3.5 hover:opacity-90 transition-opacity"
-                >
-                  Hablemos por WhatsApp
-                </a>
-              )}
-            </div>
+            </Aparecer>
           </section>
         )}
 
         {destacadas.length > 0 && (
           <section id="portfolio" className="py-16 border-t border-line scroll-mt-20">
-            <h2 className="titulo text-3xl sm:text-4xl mb-2">Lo mejor de mi trabajo</h2>
-            <p className="text-muted mb-10 max-w-xl">
-              Una selección chica, elegida a mano entre todo lo que cubrí.
-            </p>
-            <ul className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-              {destacadas.map((foto) => (
-                <li
-                  key={foto.id}
-                  className="aspect-[3/2] bg-surface rounded overflow-hidden border border-line"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={publicUrl(foto.portfolioKey!)}
-                    alt={foto.event.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </li>
-              ))}
-            </ul>
+            <Aparecer>
+              <h2 className="titulo text-3xl sm:text-4xl mb-2">Lo mejor de mi trabajo</h2>
+              <p className="text-muted mb-10 max-w-xl">
+                Una selección chica, elegida a mano entre todo lo que cubrí.
+              </p>
+              <CintaPortfolio
+                fotos={destacadas.map((foto) => ({
+                  id: foto.id,
+                  url: publicUrl(foto.portfolioKey!),
+                  ancho: foto.width,
+                  alto: foto.height,
+                  titulo: foto.event.title,
+                }))}
+              />
+            </Aparecer>
           </section>
         )}
 

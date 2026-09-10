@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { Aparecer } from "./aparecer";
 import { useMemo, useState } from "react";
 
 export type PartidoEnLista = {
@@ -65,8 +67,13 @@ export function ListaPartidos({ partidos }: { partidos: PartidoEnLista[] }) {
       )}
 
       <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {visibles.map((evento) => (
+        {visibles.map((evento, i) => (
           <li key={evento.id}>
+            {/* Entran de a una, con 60ms de diferencia. Es poco tiempo, pero
+                alcanza para que se lea como una lista que se arma y no como un
+                bloque que aparece de golpe. Se corta en la sexta: más allá,
+                esperar a que aparezca lo que ya está en pantalla molesta. */}
+            <Aparecer retraso={Math.min(i, 5) * 60} className="h-full">
             <Link
               href={`/e/${evento.slug}`}
               className="group block border border-line rounded-lg overflow-hidden con-mouse:hover:border-accent transition-colors h-full"
@@ -110,6 +117,7 @@ export function ListaPartidos({ partidos }: { partidos: PartidoEnLista[] }) {
                 </p>
               </div>
             </Link>
+            </Aparecer>
           </li>
         ))}
       </ul>

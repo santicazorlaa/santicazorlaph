@@ -46,6 +46,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="es" className={`${inter.variable} ${interTight.variable}`}>
+      {/* Las secciones que aparecen al scrollear arrancan invisibles y las
+          revela el JavaScript. Sin JavaScript no habría quien las revele, así
+          que se muestran de una: el sitio se lee igual, sin la animación. */}
+      <noscript>
+        <style>{`.aparece { opacity: 1 !important; transform: none !important; }`}</style>
+      </noscript>
       <body className="min-h-dvh flex flex-col">
         <CartProvider escalones={escalones}>
           <SiteHeader />

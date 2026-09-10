@@ -210,7 +210,7 @@ export function CartView() {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 con-mouse:hover:opacity-90 active:scale-[0.98] transition-[opacity,transform] duration-150 ease-out disabled:opacity-50 motion-reduce:transition-none"
           >
             {enviando ? "Abriendo el pago…" : "Pagar con MercadoPago"}
           </button>
