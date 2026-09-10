@@ -202,6 +202,43 @@ que las fotos de los partidos: Vercel rechaza cualquier petición de más de
 de mandarla (`subir-imagen.tsx`); el servidor la vuelve a procesar igual, porque
 es lo único que garantiza con qué medida sale al aire.
 
+**El panel es un tablero de tarjetas, no una página larga.** `/admin` sólo tiene
+las tarjetas —partidos, ventas, contenido, ajustes— con el número que importa de
+cada una; cada apartado vive en su propia pantalla (`/admin/partidos`,
+`/admin/ventas`, `/admin/ajustes`). Antes era todo una sola página y había que
+scrollear a ciegas. Al sumar un apartado nuevo, va como pantalla propia y tarjeta
+en el tablero, no apilado abajo de lo que ya está.
+
+**El Instagram del comprador es opcional y tiene que seguir siéndolo.** Se pide
+en el carrito aclarando que las fotos llegan por mail igual, y sirve sólo para
+etiquetarlo al publicar. La razón es la misma por la que no hay cuentas de
+comprador: cada campo obligatorio antes de pagar es un motivo más para no pagar.
+
+**Las animaciones siguen una regla corta: lo que entra o sale va con
+`ease-out`, lo que se mueve en pantalla con `ease-in-out`, un color con `ease`,
+y lo que se repite todo el día no se anima.** Las de interfaz duran menos de
+300ms; la aparición al scrollear dura 500ms porque acompaña al scroll en vez de
+responder a un clic. Todo lo animado es `transform` u `opacity` —lo demás obliga
+al navegador a recalcular la página en cada cuadro— y todo tiene su salida por
+`prefers-reduced-motion`.
+
+**La aparición al scrollear (`aparecer.tsx`) también revela lo que el scroll se
+saltea.** Un `IntersectionObserver` solo no alcanza: entrando con un ancla o
+recargando a media página, una sección pasa de estar abajo a estar arriba sin
+haber sido visible nunca, y quedaba invisible para siempre. Por eso además
+escucha el scroll y muestra lo que ya quedó por encima. Y como el estado
+escondido se manda desde el servidor, `layout.tsx` lleva un `<noscript>` que
+revela todo: sin JavaScript el sitio se lee igual.
+
+**La cinta del portfolio no lleva `will-change`.** Sería lo esperable para algo
+que se mueve, pero la pista mide varios miles de píxeles de ancho y dejarla
+permanentemente en una capa de la placa de video es reservar mucha memoria para
+nada; una animación de `transform` ya se compone sola. Sus fotos se cargan de
+entrada aunque estén fuera de pantalla —al revés de lo habitual— porque van a
+entrar solas en segundos y esperar a que sean visibles dejaría huecos blancos
+mientras avanza. Por eso el portfolio está acotado a 16 fotos: el tope es de
+peso, no estético.
+
 **La grilla de fotos reparte siempre desde la primera.** Cada foto va a la
 columna más corta mirando sólo las anteriores, así al traer más fotos las que ya
 estaban caen en el mismo lugar. Si se dejara balancear las columnas al navegador
@@ -306,13 +343,12 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 Ya está todo publicado. Lo que queda:
 
-1. **El sitio nuevo está sin llenar.** En septiembre de 2026 el home pasó de ser
-   una lista de partidos a tener encabezado con foto, cómo funciona, quién soy,
-   servicios para organizadores, portfolio, WhatsApp y legales. Todo eso se
-   escribe en `/admin/contenido` y **hoy está vacío**, así que esas secciones no
-   aparecen. Falta que Santi cargue su historia, el WhatsApp, las redes y los
-   textos legales, elija la tapa y marque las fotos del portfolio. Lo mismo con
-   la portada de cada partido, que sigue sin elegirse.
+1. **Lo cargado está en la base de desarrollo, no en la real.** Santi escribió
+   su historia, el WhatsApp, las redes, los legales y eligió la tapa, pero todo
+   eso vive en `santicazorlaph_dev`. Publicar el código sin copiar esas filas
+   deja el sitio con las secciones vacías. Las imágenes sí viajan solas: el
+   bucket es compartido. Falta también elegir la portada de cada partido y
+   marcar las fotos del portfolio (las destacadas de hoy son las de prueba).
 2. **Por qué se crearon seis partidos duplicados.** Ya se borraron, pero la
    causa sigue ahí: lo más probable es que el formulario de "Nuevo partido" no
    dé señal de que ya se envió y se pueda apretar dos veces.
