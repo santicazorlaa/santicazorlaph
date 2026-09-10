@@ -154,12 +154,15 @@ export default async function Home() {
           <section id="quien-soy" className="py-16 border-t border-line scroll-mt-20">
             <div className="grid gap-10 md:grid-cols-[1fr_1.2fr] items-start">
               {contenido["sobre.fotoKey"] && (
-                <div className="aspect-[4/5] bg-surface rounded-lg overflow-hidden border border-line">
+                /* Sin proporción fija: la foto se muestra como es. Forzarla a
+                   vertical recortaba de prepo una foto apaisada, y no hay forma
+                   de saber de antemano cuál va a elegir Santi. */
+                <div className="bg-surface rounded-lg overflow-hidden border border-line">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={publicUrl(contenido["sobre.fotoKey"])}
                     alt="Santi Cazorla"
-                    className="w-full h-full object-cover"
+                    className="w-full h-auto"
                     loading="lazy"
                   />
                 </div>

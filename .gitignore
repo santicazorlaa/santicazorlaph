@@ -50,3 +50,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Fotos sueltas en assets/. Ahí viven los archivos de marca (los SVG del logo),
+# que sí van al repo. Las fotos no: pesan, y su lugar es el bucket. Las que se
+# suben como tapa o retrato quedan guardadas en el bucket privado.
+assets/*.jpg
+assets/*.jpeg
+assets/*.png

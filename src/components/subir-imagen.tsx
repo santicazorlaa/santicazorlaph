@@ -88,14 +88,12 @@ export function SubirImagen({
       <h3 className="etiqueta text-muted mb-1">{etiqueta}</h3>
       <p className="text-sm text-muted mb-3 max-w-prose">{ayuda}</p>
 
-      <div
-        className={`${proporcion} max-w-72 bg-surface-2 rounded-md overflow-hidden border border-line mb-3`}
-      >
+      <div className="max-w-72 bg-surface-2 rounded-md overflow-hidden border border-line mb-3">
         {actual ? (
           /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={actual} alt="" className="w-full h-full object-cover" />
+          <img src={actual} alt="" className="w-full h-auto" />
         ) : (
-          <div className="w-full h-full grid place-items-center text-xs text-muted px-4 text-center">
+          <div className={`${proporcion} grid place-items-center text-xs text-muted px-4 text-center`}>
             Sin imagen
           </div>
         )}
