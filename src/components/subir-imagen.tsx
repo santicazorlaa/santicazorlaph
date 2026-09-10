@@ -6,7 +6,12 @@ import { useRef, useState } from "react";
 /// A cuánto se achica en el navegador antes de mandarla. No es la medida final
 /// —de eso se encarga el servidor— sino el techo que hace que la petición entre
 /// en el límite de 4,5 MB de Vercel aun viniendo de una cámara de 19 MB.
-const LADO_MAXIMO = 1600;
+///
+/// Tiene que quedar cómodamente por encima de la medida más grande con la que
+/// el servidor publica (la tapa, a 1920): si el techo fuera más chico, el
+/// servidor estaría agrandando una imagen ya achicada y la tapa saldría
+/// borrosa aunque el número diga otra cosa.
+const LADO_MAXIMO = 2600;
 
 async function achicar(archivo: File): Promise<Blob> {
   const bitmap = await createImageBitmap(archivo);

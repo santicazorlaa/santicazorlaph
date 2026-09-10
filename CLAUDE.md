@@ -140,13 +140,23 @@ con la marca encima no invita. El riesgo se acota por tamaño: sale a 500 px y
 con la misma compresión que una miniatura, o sea una sola foto chica por
 partido. Agrandarla o mejorarle la calidad sería regalar una foto de verdad.
 
-**Hay tres imágenes limpias, y cada una tiene su medida por un motivo.** La
-portada del partido (500 px), las del portfolio (500 px, la misma receta) y la
-tapa del sitio (1000 px, calidad 58). La tapa es más grande porque se ve de lado
-a lado de la pantalla y a 500 px se vería borrosa; se compensa con una
-compresión más dura y con que es una sola foto de todo el sitio, siempre debajo
-de un degradado oscuro. Subirle el tamaño o la calidad a cualquiera de las tres
-es regalar una foto.
+**Hay cuatro imágenes limpias, y cada una tiene su medida por un motivo.** La
+portada del partido (500 px), las del portfolio (900 px), la tapa del sitio
+(1920 px, calidad 60) y el retrato de Santi (1400 px), todas en
+`src/lib/watermark.ts`. La medida sale de para qué sirve cada una, no de un
+número parejo: la portada es una miniatura que invita a entrar; el portfolio le
+tiene que demostrar el nivel a un organizador, y a 500 px no demostraba nada; la
+tapa se ve de lado a lado de la pantalla, y a 1000 px se estiraba al doble y
+salía borrosa en cualquier monitor de escritorio —una tapa borrosa es peor que
+no tener tapa—; el retrato es la única sin límite real, porque no está a la
+venta. Subirle el tamaño a la portada o al portfolio sí es regalar una foto.
+
+**La tapa y el retrato guardan su archivo de origen en el bucket privado**
+(`sitio-originales/`, anotado en `hero.origenKey` y `sobre.origenKey`). Sin eso,
+cambiar la medida obligaba a pedirle a Santi que volviera a subir la imagen,
+porque de lo subido sólo quedaba la versión ya achicada. Pasó una vez, al
+corregir la tapa borrosa. Cuando la tapa se elige desde una foto de un partido,
+el origen es el original de esa foto.
 
 **Los textos del sitio los escribe Santi desde el panel, no viven en el
 código.** Están en `src/lib/contenido.ts`, guardados en la tabla `Ajuste` —una
@@ -206,6 +216,13 @@ npx tsx --conditions=react-server --env-file=.env scripts/rehacer-previsualizaci
 ```
 
 Sin `--aplicar` es un ensayo y no escribe nada. Acepta `--partido=<slug>`.
+
+Lo mismo, pero para las imágenes limpias del sitio (la tapa, el retrato y las
+fotos del portfolio), cuando se cambia alguna de sus medidas:
+
+```bash
+npx tsx --conditions=react-server --env-file=.env scripts/rehacer-imagenes-del-sitio.ts
+```
 
 `scripts/cambiar-direccion.ts` cambia la dirección de un partido. Sin argumentos
 lista las actuales. La dirección vieja deja de responder en el acto, así que no

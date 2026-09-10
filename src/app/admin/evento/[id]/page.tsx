@@ -11,7 +11,7 @@ import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural } from "@/lib/format";
 import { guardarContenido, leerContenido } from "@/lib/contenido";
 import { deleteObject, getObject, publicUrl, putObject } from "@/lib/storage";
-import { renderPortada, renderTapa } from "@/lib/watermark";
+import { renderPortada, renderPortfolio, renderTapa } from "@/lib/watermark";
 
 export const dynamic = "force-dynamic";
 /// Elegir portada baja el original del bucket y lo vuelve a procesar, que tarda
@@ -133,7 +133,7 @@ async function alternarPortfolio(formData: FormData) {
   } else {
     const original = await getObject("private", foto.originalKey);
     const key = `portfolio/${photoId}.${Date.now().toString(36)}.jpg`;
-    await putObject("public", key, await renderPortada(original), "image/jpeg");
+    await putObject("public", key, await renderPortfolio(original), "image/jpeg");
     await db.photo.update({
       where: { id: photoId },
       data: { destacada: true, portfolioKey: key },
@@ -162,7 +162,9 @@ async function usarDeTapa(formData: FormData) {
   const key = `sitio/hero-fotoKey.${Date.now().toString(36)}.jpg`;
   await putObject("public", key, await renderTapa(original), "image/jpeg");
 
-  await guardarContenido({ "hero.fotoKey": key });
+  // El original de la foto queda como origen de la tapa: si algún día cambia
+  // la medida con la que se publica, se rehace desde acá sin tocar el panel.
+  await guardarContenido({ "hero.fotoKey": key, "hero.origenKey": foto.originalKey });
 
   if (anterior && anterior !== key && anterior.startsWith("sitio/")) {
     await deleteObject("public", anterior).catch(() => {});

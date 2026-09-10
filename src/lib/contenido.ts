@@ -19,9 +19,11 @@ export const CLAVES = [
   "hero.titular",
   "hero.bajada",
   "hero.fotoKey",
+  "hero.origenKey",
   "sobre.titulo",
   "sobre.texto",
   "sobre.fotoKey",
+  "sobre.origenKey",
   "servicios.titulo",
   "servicios.texto",
   "servicios.items",
@@ -44,9 +46,15 @@ const DEFECTOS: Record<Clave, string> = {
   "hero.bajada":
     "Entrá al partido que jugaste, elegí las fotos que te gusten y llevátelas en alta resolución, sin marca de agua. Se descargan al instante, apenas se acredita el pago.",
   "hero.fotoKey": "",
+  // Guarda dónde quedó el archivo tal como se subió, en el bucket privado. Es
+  // lo que permite volver a generar la imagen con otra medida —como pasó al
+  // descubrir que la tapa se veía borrosa— sin pedirle a Santi que la suba de
+  // nuevo.
+  "hero.origenKey": "",
   "sobre.titulo": "",
   "sobre.texto": "",
   "sobre.fotoKey": "",
+  "sobre.origenKey": "",
   "servicios.titulo": "",
   "servicios.texto": "",
   "servicios.items": "",

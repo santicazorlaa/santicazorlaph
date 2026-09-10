@@ -34,9 +34,27 @@ const CALIDAD_THUMB = 72;
 
 /// La tapa del sitio: se ve de lado a lado de la pantalla, así que necesita más
 /// ancho que una portada. Va con una compresión más dura para compensar: abajo
-/// de un degradado oscuro no se nota, y suelta la foto no sirve de mucho.
-const TAPA_ANCHO = 1000;
-const CALIDAD_TAPA = 58;
+/// de un degradado oscuro no se nota.
+///
+/// Estuvo en 1000 px y se veía mal en cualquier monitor de escritorio, que hoy
+/// arranca en 1440 y sigue para arriba: la imagen se estiraba a más del doble
+/// de su tamaño. Una tapa borrosa es peor que no tener tapa, porque lo primero
+/// que dice de un fotógrafo es que sus fotos se ven mal.
+const TAPA_ANCHO = 1920;
+const CALIDAD_TAPA = 60;
+
+/// Las fotos del portfolio. Más grandes que una portada porque tienen otro
+/// trabajo: una portada invita a entrar a un partido, el portfolio le tiene que
+/// demostrar el nivel a un organizador que está decidiendo si contratarlo. A
+/// 500 px no demostraba nada.
+const PORTFOLIO_ANCHO = 900;
+const CALIDAD_PORTFOLIO = 68;
+
+/// El retrato de Santi. Es la única imagen del sitio que no se limita por
+/// tamaño, y el motivo es simple: no está a la venta. Nadie le compra una foto
+/// de Santi con la cámara en la mano.
+const RETRATO_ANCHO = 1400;
+const CALIDAD_RETRATO = 80;
 
 /// Archivos que vienen con el proyecto, en negativo porque la marca se aplica
 /// en blanco sobre la foto. De cada slot se usa el primero que exista.
@@ -315,10 +333,25 @@ export function renderPortada(original: Buffer) {
  * elegida por Santi, y no una por partido.
  */
 export function renderTapa(original: Buffer) {
+  return limpia(original, TAPA_ANCHO, CALIDAD_TAPA);
+}
+
+/// Una foto del portfolio de la portada. Sin marca de agua: un portfolio con
+/// marca no le muestra el trabajo a nadie.
+export function renderPortfolio(original: Buffer) {
+  return limpia(original, PORTFOLIO_ANCHO, CALIDAD_PORTFOLIO);
+}
+
+/// El retrato de Santi para la sección "quién soy".
+export function renderRetrato(original: Buffer) {
+  return limpia(original, RETRATO_ANCHO, CALIDAD_RETRATO);
+}
+
+function limpia(original: Buffer, ancho: number, calidad: number) {
   return sharp(original, { failOn: "none" })
-    .rotate()
-    .resize({ width: TAPA_ANCHO, withoutEnlargement: true })
-    .jpeg({ quality: CALIDAD_TAPA, progressive: true, mozjpeg: true })
+    .rotate() // respeta la orientación EXIF antes de descartar la metadata
+    .resize({ width: ancho, withoutEnlargement: true })
+    .jpeg({ quality: calidad, progressive: true, mozjpeg: true })
     .toBuffer();
 }
 
