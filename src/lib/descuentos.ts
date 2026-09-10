@@ -177,3 +177,82 @@ export function repartir(precios: number[], total: number): number[] {
 export function textoDeEscalones(escalones: Escalon[]) {
   return escalones.map((e) => `${e.desde} o más, ${e.porcentaje}%`).join(" · ");
 }
+
+/**
+ * Pack completo: precio fijo por todas las fotos de un evento.
+ *
+ * `eventKey` agrupa las fotos de un mismo evento (el carrito usa el slug, el
+ * servidor el id; a esta función le da igual, sólo necesita que sea estable
+ * dentro de la misma lista). `totalFotosEvento` es cuántas fotos tiene ese
+ * evento en total: el pack sólo aplica si el carrito trae exactamente todas,
+ * ni una foto menos.
+ */
+export type ItemConEvento = {
+  precio: number;
+  eventKey: string;
+  totalFotosEvento: number;
+  packPriceArs: number | null;
+};
+
+/**
+ * Reparte el total a cobrar entre las fotos, foto por foto y en el mismo
+ * orden en el que vinieron los items.
+ *
+ * Agrupa por evento: si un grupo trae el pack completo, ese grupo se cobra al
+ * precio de pack, sin pasar por el descuento por cantidad. El resto de las
+ * fotos —sueltas o de un evento sin todas sus fotos en el carrito— se juntan
+ * entre sí, sin importar de qué evento sean, y ahí sí corre el descuento por
+ * cantidad total, como siempre.
+ */
+export function repartirConPack(items: ItemConEvento[], escalones: Escalon[]): number[] {
+  const grupos = new Map<string, number[]>();
+  items.forEach((item, i) => {
+    const indices = grupos.get(item.eventKey);
+    if (indices) indices.push(i);
+    else grupos.set(item.eventKey, [i]);
+  });
+
+  const resultado = new Array<number>(items.length).fill(0);
+  const sueltos: number[] = [];
+
+  for (const indices of grupos.values()) {
+    const { totalFotosEvento, packPriceArs } = items[indices[0]];
+    const esPack = Boolean(packPriceArs) && indices.length === totalFotosEvento;
+    if (esPack) {
+      const precios = indices.map((i) => items[i].precio);
+      const repartido = repartir(precios, packPriceArs!);
+      indices.forEach((i, k) => {
+        resultado[i] = repartido[k];
+      });
+    } else {
+      sueltos.push(...indices);
+    }
+  }
+
+  if (sueltos.length > 0) {
+    const precios = sueltos.map((i) => items[i].precio);
+    const total = calcular(precios.reduce((a, b) => a + b, 0), sueltos.length, escalones).total;
+    const repartido = repartir(precios, total);
+    sueltos.forEach((i, k) => {
+      resultado[i] = repartido[k];
+    });
+  }
+
+  return resultado;
+}
+
+/// Igual que `calcular`, pero mirando si algún evento del carrito completa su
+/// pack. El total sale de sumar lo mismo que reparte `repartirConPack`, así
+/// las dos nunca se desentienden entre sí.
+export function calcularConPack(items: ItemConEvento[], escalones: Escalon[]): Cuenta {
+  const precios = repartirConPack(items, escalones);
+  const total = precios.reduce((a, b) => a + b, 0);
+  const subtotal = items.reduce((s, i) => s + i.precio, 0);
+  return {
+    subtotal,
+    total,
+    ahorro: subtotal - total,
+    porcentaje: subtotal > 0 ? Math.round(((subtotal - total) / subtotal) * 100) : 0,
+    unitario: items.length > 0 ? Math.round(total / items.length) : 0,
+  };
+}

@@ -18,8 +18,14 @@ model Event {
   title     String
   date      DateTime
   location  String?
+  /// Deporte del partido/evento, para agrupar en la portada. Libre a propósito:
+  /// no hay un enum cerrado de disciplinas.
+  category  String?
   /// Precio por foto en pesos enteros. Cada evento puede tener el suyo.
   priceArs  Int      @default(2500)
+  /// Precio fijo por todas las fotos del evento. Si está cargado, en el carrito
+  /// se ofrece como alternativa a comprarlas sueltas con descuento por cantidad.
+  packPriceArs Int?
   published Boolean  @default(false)
   coverKey  String?
   createdAt DateTime @default(now())

@@ -64,6 +64,12 @@ export function CartView() {
     return acc;
   }, {});
 
+  // Un pack está aplicado cuando el carrito trae exactamente todas las fotos
+  // de ese evento y el evento tiene precio de pack cargado.
+  const packsAplicados = Object.values(porEvento).filter(
+    (items) => items[0].packPriceArs && items.length === items[0].totalFotosEvento,
+  );
+
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_20rem] items-start">
       <div className="space-y-8">
@@ -107,6 +113,20 @@ export function CartView() {
 
       <aside className="border border-line rounded-lg p-5 lg:sticky lg:top-24">
         <h2 className="etiqueta text-muted mb-4">Resumen</h2>
+
+        {packsAplicados.length > 0 && (
+          <ul className="mb-4 space-y-1.5">
+            {packsAplicados.map((items) => (
+              <li
+                key={items[0].eventSlug}
+                className="text-xs text-accent bg-accent/10 rounded-md px-3 py-2"
+              >
+                Pack completo de {items[0].eventTitle}: {precio(items[0].packPriceArs!)} por
+                las {items.length} fotos.
+              </li>
+            ))}
+          </ul>
+        )}
 
         <dl className="space-y-2 text-sm tabular-nums border-b border-line pb-4 mb-4">
           <div className="flex justify-between">

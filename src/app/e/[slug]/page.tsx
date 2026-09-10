@@ -50,6 +50,12 @@ export default async function EventoPage({ params }: Props) {
           <span>
             <span className="cifra">{precio(evento.priceArs)}</span> por foto
           </span>
+          {evento.packPriceArs && (
+            <span className="text-accent">
+              o llevate las {evento._count.photos} por{" "}
+              <span className="cifra">{precio(evento.packPriceArs)}</span>
+            </span>
+          )}
         </div>
 
       </section>
@@ -65,6 +71,7 @@ export default async function EventoPage({ params }: Props) {
         eventTitle={evento.title}
         priceArs={evento.priceArs}
         totalPhotos={evento._count.photos}
+        packPriceArs={evento.packPriceArs}
         initialPhotos={photos.map(toPhotoDTO)}
       />
     </div>

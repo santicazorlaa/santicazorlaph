@@ -65,6 +65,11 @@ export default async function Home() {
                       )}
                     </div>
                     <div className="p-4">
+                      {evento.category && (
+                        <p className="etiqueta text-[0.65rem] text-accent mb-1">
+                          {evento.category}
+                        </p>
+                      )}
                       <h3 className="titulo text-xl group-hover:text-accent transition-colors text-balance">
                         {evento.title}
                       </h3>

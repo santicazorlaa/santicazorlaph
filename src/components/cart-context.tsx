@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-import { calcular, type Cuenta, type Escalon } from "@/lib/descuentos";
+import { calcularConPack, type Cuenta, type Escalon, type ItemConEvento } from "@/lib/descuentos";
 
 const STORAGE_KEY = "sc_carrito";
 
@@ -20,6 +20,12 @@ export type CartItem = {
   eventTitle: string;
   thumbUrl: string;
   priceArs: number;
+  /// Cuántas fotos tiene el evento en total. Con esto el carrito sabe si lo
+  /// que juntó es el pack completo, sin tener que volver a preguntarle al
+  /// servidor.
+  totalFotosEvento: number;
+  /// Precio del pack completo de ese evento, si el fotógrafo cargó uno.
+  packPriceArs: number | null;
 };
 
 type CartValue = {
@@ -98,11 +104,13 @@ export function CartProvider({
   const clear = useCallback(() => setItems([]), []);
 
   const value = useMemo<CartValue>(() => {
-    const cuenta = calcular(
-      items.reduce((s, i) => s + i.priceArs, 0),
-      items.length,
-      escalones,
-    );
+    const itemsConEvento: ItemConEvento[] = items.map((i) => ({
+      precio: i.priceArs,
+      eventKey: i.eventSlug,
+      totalFotosEvento: i.totalFotosEvento,
+      packPriceArs: i.packPriceArs,
+    }));
+    const cuenta = calcularConPack(itemsConEvento, escalones);
     return {
       items,
       count: items.length,

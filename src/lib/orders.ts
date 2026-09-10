@@ -4,7 +4,7 @@ import { customAlphabet } from "nanoid";
 
 import { leerEscalones } from "./ajustes";
 import { db } from "./db";
-import { calcular, repartir } from "./descuentos";
+import { calcularConPack, repartirConPack, type ItemConEvento } from "./descuentos";
 import { enviarMailDeCompra } from "./email";
 import { mercadopago as mpEnv } from "./env";
 import { createPreference, getPayment } from "./mercadopago";
@@ -47,7 +47,8 @@ export async function createOrder(photoIds: string[], email: string) {
     select: {
       id: true,
       code: true,
-      event: { select: { title: true, priceArs: true } },
+      eventId: true,
+      event: { select: { title: true, priceArs: true, packPriceArs: true } },
     },
   });
 
@@ -55,17 +56,32 @@ export async function createOrder(photoIds: string[], email: string) {
     throw new OrderError("Algunas fotos ya no están disponibles");
   }
 
-  // El descuento por cantidad se calcula acá, con los precios de la base. Lo
-  // que el navegador haya mostrado no interviene.
-  const subtotal = photos.reduce((sum, p) => sum + p.event.priceArs, 0);
-  const { total: totalArs } = calcular(subtotal, photos.length, await leerEscalones());
+  // Para saber si algún evento del carrito completa su pack hace falta cuántas
+  // fotos tiene en total, no sólo las que se están comprando.
+  const eventIds = [...new Set(photos.map((p) => p.eventId))];
+  const conteos = await db.photo.groupBy({
+    by: ["eventId"],
+    where: { eventId: { in: eventIds } },
+    _count: { _all: true },
+  });
+  const totalPorEvento = new Map(conteos.map((c) => [c.eventId, c._count._all]));
 
-  // A MercadoPago se le manda una línea por foto, así que el descuento hay que
-  // repartirlo entre esas líneas: si no, cobraría el precio de lista.
-  const precios = repartir(
-    photos.map((p) => p.event.priceArs),
-    totalArs,
-  );
+  // El descuento por cantidad —y el pack completo, si corresponde— se calculan
+  // acá, con los precios de la base. Lo que el navegador haya mostrado no
+  // interviene.
+  const escalones = await leerEscalones();
+  const items: ItemConEvento[] = photos.map((p) => ({
+    precio: p.event.priceArs,
+    eventKey: p.eventId,
+    totalFotosEvento: totalPorEvento.get(p.eventId) ?? 0,
+    packPriceArs: p.event.packPriceArs,
+  }));
+  const { total: totalArs } = calcularConPack(items, escalones);
+
+  // A MercadoPago se le manda una línea por foto, así que el total —de pack o
+  // de descuento— hay que repartirlo entre esas líneas: si no, cobraría el
+  // precio de lista.
+  const precios = repartirConPack(items, escalones);
 
   const order = await db.order.create({
     data: {

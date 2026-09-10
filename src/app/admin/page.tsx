@@ -10,8 +10,9 @@ import { leerAjustesDeFoto, leerEscalones } from "@/lib/ajustes";
 import { db } from "@/lib/db";
 import { deleteObject } from "@/lib/storage";
 import { isAdmin } from "@/lib/auth";
-import { fechaBreve, plural, precio, slugify } from "@/lib/format";
+import { fechaBreve, horaDe, plural, precio, slugify } from "@/lib/format";
 import { SLOTS } from "@/lib/marca-slots";
+import { enviarMailDeCompra } from "@/lib/email";
 import { OrderStatus } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
@@ -93,19 +94,39 @@ const AVISOS_DESCUENTOS: Record<string, string> = {
   vacio: "No quedó ningún escalón válido, así que no se guardó nada.",
 };
 
+const AVISOS_MAIL: Record<string, string> = {
+  reenviado: "Listo: le volvimos a mandar el mail con sus fotos.",
+  "reenvio-error": "No se pudo reenviar. Puede que falte configurar el correo.",
+};
+
+/// Reenvía el mail de descarga a mano, para cuando el comprador dice que no le
+/// llegó o escribió mal el email. Sólo tiene sentido en órdenes ya pagadas: una
+/// pendiente todavía no tiene nada que entregar.
+async function reenviarMail(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) redirect("/admin");
+
+  const resultado = await enviarMailDeCompra(orderId);
+  redirect(`/admin?mail=${resultado.ok ? "reenviado" : "reenvio-error"}`);
+}
+
 type Props = {
   searchParams: Promise<{
     marca?: string;
     detalle?: string;
     descuentos?: string;
     borrado?: string;
+    mail?: string;
   }>;
 };
 
 export default async function AdminPage({ searchParams }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
 
-  const { marca, detalle, descuentos, borrado } = await searchParams;
+  const { marca, detalle, descuentos, borrado, mail } = await searchParams;
   const aviso = marca === "error" ? (detalle ?? "No pudimos guardar el archivo") : marca ? (AVISOS[marca] ?? null) : null;
 
   const ajustesDeFoto = await leerAjustesDeFoto();
@@ -122,7 +143,11 @@ export default async function AdminPage({ searchParams }: Props) {
     return { slot, propia: Boolean(fila), filename: fila?.filename ?? null };
   });
 
-  const [eventos, fotosVendidas, ventas] = await Promise.all([
+  const inicioDelMes = new Date();
+  inicioDelMes.setDate(1);
+  inicioDelMes.setHours(0, 0, 0, 0);
+
+  const [eventos, fotosVendidas, ventas, ventasDelMes, ultimasOrdenes] = await Promise.all([
     db.event.findMany({
       orderBy: { date: "desc" },
       include: { _count: { select: { photos: true } } },
@@ -138,6 +163,24 @@ export default async function AdminPage({ searchParams }: Props) {
       _sum: { totalArs: true },
       _count: true,
     }),
+    db.order.aggregate({
+      where: { status: OrderStatus.PAID, paidAt: { gte: inicioDelMes } },
+      _sum: { totalArs: true },
+      _count: true,
+    }),
+    db.order.findMany({
+      where: { status: { in: [OrderStatus.PAID, OrderStatus.PENDING] } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        totalArs: true,
+        createdAt: true,
+        _count: { select: { items: true } },
+      },
+    }),
   ]);
 
   const vendidasPorPartido = new Map<string, number>();
@@ -152,6 +195,7 @@ export default async function AdminPage({ searchParams }: Props) {
     const title = String(formData.get("title") ?? "").trim();
     const fechaTexto = String(formData.get("date") ?? "");
     const location = String(formData.get("location") ?? "").trim();
+    const category = String(formData.get("category") ?? "").trim();
     const priceArs = Number(formData.get("priceArs") ?? 2500);
 
     if (!title || !fechaTexto) return;
@@ -169,6 +213,7 @@ export default async function AdminPage({ searchParams }: Props) {
         slug,
         date: new Date(`${fechaTexto}T12:00:00`),
         location: location || null,
+        category: category || null,
         priceArs: Number.isFinite(priceArs) && priceArs > 0 ? Math.round(priceArs) : 2500,
       },
     });
@@ -182,6 +227,9 @@ export default async function AdminPage({ searchParams }: Props) {
         <h1 className="titulo text-4xl">Panel</h1>
         <p className="text-sm text-muted tabular-nums">
           {plural(ventas._count, "venta", "ventas")} · {precio(ventas._sum.totalArs ?? 0)}
+          <span className="text-line"> · </span>
+          este mes: {plural(ventasDelMes._count, "venta", "ventas")} ·{" "}
+          {precio(ventasDelMes._sum.totalArs ?? 0)}
         </p>
       </div>
 
@@ -222,6 +270,26 @@ export default async function AdminPage({ searchParams }: Props) {
               placeholder="San Miguel de Tucumán"
               className="w-full bg-surface border border-line rounded-md px-3 py-2.5 focus:border-accent outline-none"
             />
+          </div>
+          <div>
+            <label htmlFor="category" className="etiqueta text-muted block mb-1.5">
+              Deporte
+            </label>
+            <input
+              id="category"
+              name="category"
+              list="deportes"
+              placeholder="Fútbol"
+              className="w-full bg-surface border border-line rounded-md px-3 py-2.5 focus:border-accent outline-none"
+            />
+            <datalist id="deportes">
+              <option value="Fútbol" />
+              <option value="Básquet" />
+              <option value="Vóley" />
+              <option value="Rugby" />
+              <option value="Hockey" />
+              <option value="Maratón" />
+            </datalist>
           </div>
           <div>
             <label htmlFor="priceArs" className="etiqueta text-muted block mb-1.5">
@@ -274,6 +342,9 @@ export default async function AdminPage({ searchParams }: Props) {
                 className="flex flex-wrap items-baseline gap-x-5 gap-y-1 flex-1 min-w-0 hover:text-accent transition-colors"
               >
                 <span className="titulo text-xl flex-1 min-w-50">{evento.title}</span>
+                {evento.category && (
+                  <span className="etiqueta text-[0.65rem] text-muted">{evento.category}</span>
+                )}
                 <span className="text-sm text-muted tabular-nums">
                   {fechaBreve(evento.date)}
                 </span>
@@ -301,6 +372,63 @@ export default async function AdminPage({ searchParams }: Props) {
           ))}
         </ul>
       )}
+
+      <div className="mt-16 pt-10 border-t border-line">
+        <h2 className="titulo text-2xl mb-1">Ventas recientes</h2>
+        <p className="text-sm text-muted mb-6 max-w-prose">
+          Las últimas 20 órdenes. Si un comprador dice que no le llegó el mail o
+          escribió mal el correo, reenviaselo desde acá.
+        </p>
+
+        {mail && (
+          <p className={`text-sm mb-4 ${mail === "reenviado" ? "text-good" : "text-danger"}`}>
+            {AVISOS_MAIL[mail] ?? null}
+          </p>
+        )}
+
+        {ultimasOrdenes.length === 0 ? (
+          <p className="text-muted border border-dashed border-line rounded-lg py-8 text-center mb-4">
+            Todavía no hay ventas.
+          </p>
+        ) : (
+          <ul className="divide-y divide-line border-y border-line mb-4">
+            {ultimasOrdenes.map((orden) => (
+              <li key={orden.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 py-3">
+                <span className="text-sm flex-1 min-w-40 truncate">{orden.email}</span>
+                <span className="text-sm text-muted tabular-nums">
+                  {fechaBreve(orden.createdAt)} {horaDe(orden.createdAt)}
+                </span>
+                <span className="text-sm text-muted tabular-nums w-20 text-right">
+                  {plural(orden._count.items, "foto", "fotos")}
+                </span>
+                <span className="text-sm tabular-nums w-24 text-right">
+                  {precio(orden.totalArs)}
+                </span>
+                <span
+                  className={`etiqueta text-[0.65rem] w-20 text-right ${
+                    orden.status === OrderStatus.PAID ? "text-good" : "text-muted"
+                  }`}
+                >
+                  {orden.status === OrderStatus.PAID ? "Pagada" : "Pendiente"}
+                </span>
+                <span className="w-28 text-right">
+                  {orden.status === OrderStatus.PAID ? (
+                    <form action={reenviarMail}>
+                      <input type="hidden" name="orderId" value={orden.id} />
+                      <button
+                        type="submit"
+                        className="etiqueta text-[0.65rem] text-muted hover:text-accent transition-colors"
+                      >
+                        Reenviar mail
+                      </button>
+                    </form>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Abajo del todo porque son de las que se tocan una vez y no se miran
           más. Arriba estorbaban lo de todos los días, que es cargar un partido

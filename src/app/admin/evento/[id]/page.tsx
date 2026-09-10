@@ -36,6 +36,34 @@ async function guardarPrecio(formData: FormData) {
   revalidatePath("/");
 }
 
+async function guardarDetalles(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const id = String(formData.get("eventId") ?? "");
+  if (!id) return;
+
+  const category = String(formData.get("category") ?? "").trim();
+  const packTexto = String(formData.get("packPriceArs") ?? "").trim();
+  const pack = packTexto === "" ? null : Number(packTexto);
+
+  await db.event.update({
+    where: { id },
+    data: {
+      category: category || null,
+      // Vacío saca el pack. Un número inválido no se guarda: mejor dejar el
+      // valor anterior que guardar un precio que no tiene sentido.
+      ...(packTexto === "" || (Number.isFinite(pack) && pack! >= 1)
+        ? { packPriceArs: pack }
+        : {}),
+    },
+  });
+
+  revalidatePath(`/admin/evento/${id}`);
+  revalidatePath("/");
+  revalidatePath("/carrito");
+}
+
 async function usarDePortada(formData: FormData) {
   "use server";
   if (!(await isAdmin())) redirect("/admin/login");
@@ -157,6 +185,53 @@ export default async function AdminEventoPage({ params }: Props) {
           escalones={escalones}
           action={guardarPrecio}
         />
+
+        <div>
+          <h2 className="etiqueta text-muted mb-1">Deporte y pack completo</h2>
+          <p className="text-sm text-muted mb-4 max-w-prose">
+            El deporte agrupa el partido en la portada. El precio de pack es
+            opcional: si lo cargás, en el carrito se ofrece llevarse todas las
+            fotos de este partido a ese precio fijo, en vez de sueltas con
+            descuento por cantidad.
+          </p>
+          <form action={guardarDetalles} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="eventId" value={evento.id} />
+            <div>
+              <label htmlFor="category" className="etiqueta text-muted block mb-1.5">
+                Deporte
+              </label>
+              <input
+                id="category"
+                name="category"
+                defaultValue={evento.category ?? ""}
+                placeholder="Fútbol"
+                className="w-40 bg-surface border border-line rounded-md px-3 py-2.5 focus:border-accent outline-none"
+              />
+            </div>
+            <div>
+              <label htmlFor="packPriceArs" className="etiqueta text-muted block mb-1.5">
+                Precio del pack
+              </label>
+              <input
+                id="packPriceArs"
+                name="packPriceArs"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                defaultValue={evento.packPriceArs ?? ""}
+                placeholder="Sin pack"
+                className="w-40 bg-surface border border-line rounded-md px-3 py-2.5 tabular-nums focus:border-accent outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="etiqueta bg-accent-solid text-accent-ink rounded-md px-6 py-2.5 hover:opacity-90 transition-opacity"
+            >
+              Guardar
+            </button>
+          </form>
+        </div>
 
         <div>
           <h2 className="etiqueta text-muted mb-1">Portada</h2>

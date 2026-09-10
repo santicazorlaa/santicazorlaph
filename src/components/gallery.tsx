@@ -65,6 +65,7 @@ type Props = {
   eventTitle: string;
   priceArs: number;
   totalPhotos: number;
+  packPriceArs: number | null;
   initialPhotos: PhotoDTO[];
 };
 
@@ -73,6 +74,7 @@ export function Gallery({
   eventTitle,
   priceArs,
   totalPhotos,
+  packPriceArs,
   initialPhotos,
 }: Props) {
   const cart = useCart();
@@ -93,8 +95,10 @@ export function Gallery({
       eventTitle,
       thumbUrl: photo.thumbUrl,
       priceArs,
+      totalFotosEvento: totalPhotos,
+      packPriceArs,
     }),
-    [eventSlug, eventTitle, priceArs],
+    [eventSlug, eventTitle, priceArs, totalPhotos, packPriceArs],
   );
 
   const cargarMas = async () => {
