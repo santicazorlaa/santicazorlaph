@@ -38,6 +38,7 @@ export const CLAVES = [
   "contacto.instagram",
   "contacto.linkedin",
   "contacto.email",
+  "notificaciones.email",
   "legal.terminos",
   "legal.privacidad",
 ] as const;
@@ -83,6 +84,7 @@ const DEFECTOS: Record<Clave, string> = {
   "contacto.instagram": "",
   "contacto.linkedin": "",
   "contacto.email": "",
+  "notificaciones.email": "",
   "legal.terminos": "",
   "legal.privacidad": "",
 };

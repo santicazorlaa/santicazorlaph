@@ -4,12 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { BotonEnvio } from "@/components/boton-envio";
-
 import { EncuadrarTapa } from "@/components/encuadrar-tapa";
+import { SenalDeLink } from "@/components/senal-link";
 import { SubirImagen } from "@/components/subir-imagen";
 import { isAdmin } from "@/lib/auth";
 import { CLAVES, leerContenido, type Clave } from "@/lib/contenido";
 import { guardarContenido } from "@/lib/contenido";
+import { obtenerDestinatarioNotificaciones } from "@/lib/email";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -141,12 +142,16 @@ export default async function ContenidoPage({ searchParams }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
 
   const { guardado } = await searchParams;
-  const c = await leerContenido();
+  const [c, mailAvisosActual] = await Promise.all([
+    leerContenido(),
+    obtenerDestinatarioNotificaciones(),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-12">
-      <Link href="/admin" className="etiqueta text-muted hover:text-ink transition-colors">
+      <Link href="/admin" className="etiqueta text-muted hover:text-ink transition-colors inline-flex items-center">
         ← Panel
+        <SenalDeLink />
       </Link>
 
       <h1 className="titulo text-4xl mt-4 mb-2">Contenido del sitio</h1>
@@ -337,8 +342,20 @@ export default async function ContenidoPage({ searchParams }: Props) {
           />
           <Campo
             clave="contacto.email"
-            etiqueta="Mail de contacto"
+            etiqueta="Mail de contacto público"
+            ayuda="El mail público que se muestra en el pie de la web para que los clientes te escriban."
             valor={c["contacto.email"]}
+          />
+          <Campo
+            clave="notificaciones.email"
+            etiqueta="Mail para recibir avisos de ventas"
+            ayuda={`Acá te llega un correo cada vez que alguien compra fotos (con el nombre completo del comprador, fotos y total). ${
+              mailAvisosActual
+                ? `Actualmente los avisos se envían a: ${mailAvisosActual}.`
+                : "Si lo dejás vacío, usa tu mail de contacto público."
+            }`}
+            valor={c["notificaciones.email"]}
+            placeholder={c["contacto.email"] || "santicazorlaph@gmail.com"}
           />
           <Guardar />
         </form>

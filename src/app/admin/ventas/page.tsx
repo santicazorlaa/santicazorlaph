@@ -121,12 +121,15 @@ export default async function VentasPage({ searchParams }: Props) {
       take: 40,
       select: {
         id: true,
+        token: true,
         email: true,
         buyerName: true,
         instagram: true,
         status: true,
         totalArs: true,
         createdAt: true,
+        paidAt: true,
+        mpPaymentId: true,
         items: {
           select: {
             priceArs: true,
@@ -221,10 +224,14 @@ export default async function VentasPage({ searchParams }: Props) {
                   )}
                   <div className="relative group/fila">
                     <Venta
+                      id={orden.id}
+                      token={orden.token}
                       email={orden.email}
                       buyerName={orden.buyerName}
                       instagram={orden.instagram}
                       fecha={`${fechaBreve(orden.createdAt)} ${horaDe(orden.createdAt)}`}
+                      fechaPago={orden.paidAt ? `${fechaBreve(orden.paidAt)} ${horaDe(orden.paidAt)}` : null}
+                      mpPaymentId={orden.mpPaymentId}
                       cantidad={plural(orden.items.length, "foto", "fotos")}
                       total={precio(orden.totalArs)}
                       pagada={puedeReenviar}

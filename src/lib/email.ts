@@ -200,14 +200,29 @@ export async function enviarMailDeCompra(orderId: string) {
   }
 }
 
-async function obtenerDestinatarioAdmin() {
+export async function obtenerDestinatarioNotificaciones() {
+  // 1. Mail específico configurado por Santi en el panel para recibir avisos:
+  const notifAjuste = await db.ajuste
+    .findUnique({ where: { clave: "notificaciones.email" } })
+    .catch(() => null);
+  if (notifAjuste?.valor?.trim()) return notifAjuste.valor.trim();
+
+  // 2. Variable de entorno ADMIN_EMAIL (si existe en Vercel):
   if (process.env.ADMIN_EMAIL?.trim()) return process.env.ADMIN_EMAIL.trim();
-  const ajuste = await db.ajuste
+
+  // 3. Mail de contacto público de la web:
+  const contactoAjuste = await db.ajuste
     .findUnique({ where: { clave: "contacto.email" } })
     .catch(() => null);
-  if (ajuste?.valor?.trim()) return ajuste.valor.trim();
+  if (contactoAjuste?.valor?.trim()) return contactoAjuste.valor.trim();
+
+  // 4. Fallback al remitente configurado:
   const match = process.env.MAIL_FROM?.match(/<([^>]+)>/);
   return match ? match[1] : process.env.MAIL_FROM;
+}
+
+async function obtenerDestinatarioAdmin() {
+  return obtenerDestinatarioNotificaciones();
 }
 
 /**
