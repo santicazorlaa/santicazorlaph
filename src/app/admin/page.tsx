@@ -37,6 +37,7 @@ export default async function AdminPage() {
     ultimoPartido,
     portfolio,
     ultimaVenta,
+    entregas,
   ] =
     await Promise.all([
       db.event.count(),
@@ -55,6 +56,7 @@ export default async function AdminPage() {
         orderBy: { paidAt: "desc" },
         select: { paidAt: true, totalArs: true },
       }),
+      db.clientDelivery.count(),
     ]);
 
   return (
@@ -95,6 +97,17 @@ export default async function AdminPage() {
               : `${publicados} ${publicados === 1 ? "publicado" : "publicados"} · ${plural(fotos, "foto", "fotos")} en total${
                   ultimoPartido ? ` · último: ${ultimoPartido.title}` : ""
                 }`
+          }
+        />
+
+        <Tarjeta
+          href="/admin/entregas"
+          titulo="Entregas a Equipos"
+          dato={entregas === 0 ? "Sin entregas" : String(entregas)}
+          detalle={
+            entregas === 0
+              ? "Creá galerías privadas con Google Drive para equipos."
+              : `${plural(entregas, "entrega", "entregas")} para clientes con descarga en alta calidad.`
           }
         />
 

@@ -47,3 +47,7 @@ export const mercadopago = () => {
 /// Sin R2 configurado el sitio guarda las fotos en disco, para poder trabajar
 /// en local sin cuenta de Cloudflare.
 export const usingLocalStorage = () => !process.env.R2_ACCOUNT_ID;
+
+/// API Key opcional para indexar carpetas públicas de Google Drive
+export const googleDriveApiKey = () => process.env.GOOGLE_DRIVE_API_KEY ?? "";
+

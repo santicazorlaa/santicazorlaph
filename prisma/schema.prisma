@@ -159,3 +159,53 @@ model PortfolioPhoto {
 
   @@index([orden, createdAt])
 }
+
+/// Entrega privada a un equipo o cliente.
+/// Permite compartir fotos en alta resolución vinculadas a Google Drive,
+/// con galería fluida, descarga individual y protección por token o PIN.
+model ClientDelivery {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  /// Token secreto para acceso directo por Magic Link
+  token         String   @unique
+  title         String
+  clientName    String
+  date          DateTime
+  location      String?
+  driveUrl      String
+  driveFolderId String
+  pin           String?
+  coverUrl      String?
+  published     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  photos DeliveryPhoto[]
+
+  @@index([published, date])
+  @@index([token])
+}
+
+model DeliveryPhoto {
+  id         String         @id @default(cuid())
+  deliveryId String
+  delivery   ClientDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  /// ID del archivo en Google Drive
+  driveFileId String
+  name        String
+  code        String
+
+  width     Int @default(0)
+  height    Int @default(0)
+  sizeBytes Int @default(0)
+
+  camera  String?
+  lens    String?
+  takenAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([deliveryId, takenAt])
+}
+
