@@ -654,13 +654,18 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 ## Qué falta
 
-0. **Mejoras de Google y de seguridad del 15 de septiembre de 2026: hechas y
-   probadas en local, sin publicar.** Para publicar hacen falta los dos pasos de
-   siempre: `npm run migrar:produccion` (crea la tabla `Intento`, sólo agrega) y
-   subir el código. Al publicar, la sesión del panel se cierra una vez (cambió
-   la firma) y los jugadores con PIN lo tienen que volver a poner una vez.
-   Después, dar de alta el sitio en Google Search Console y mandarle
-   `https://www.santicazorlaph.com/sitemap.xml`.
+0. **Mejoras de Google y de seguridad del 15 de septiembre de 2026: publicadas.**
+   Migración aplicada en la base real y verificado en producción: robots,
+   sitemap, favicon, títulos y descripciones, datos estructurados, encabezados
+   de seguridad y validación del checkout. Falta dar de alta el sitio en Google
+   Search Console y mandarle `https://www.santicazorlaph.com/sitemap.xml`.
+   Falta también una compra de punta a punta hecha a mano: no se probó crear un
+   cobro real después del cambio.
+
+   `revision-general.ts` quedó desactualizado en dos chequeos que marcan falla
+   sin serlo: espera un 307 del panel (desde que hay `loading.tsx` la
+   redirección llega dentro de la página) y busca la foto de control en la base
+   de `.env`, que ahora es la de desarrollo.
 
    La base de desarrollo tenía la migración de entregas sin anotar (las tablas
    se habían creado a mano); se anotó como aplicada con `migrate resolve`.
