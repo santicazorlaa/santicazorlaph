@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
+
+import { cookieDeEntrega, paseDeEntrega, pinCorrecto } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ipDe, olvidarIntentos, superaLimite } from "@/lib/limite";
 
 const schema = z.object({
   pin: z.string().min(1).max(20),
 });
 
 type Props = { params: Promise<{ slug: string }> };
+
+const QUINCE_MINUTOS = 15 * 60;
+const UNA_HORA = 60 * 60;
 
 export async function POST(request: Request, { params }: Props) {
   const { slug } = await params;
@@ -20,7 +26,7 @@ export async function POST(request: Request, { params }: Props) {
   const { pin } = parsed.data;
 
   const delivery = await db.clientDelivery.findUnique({
-    where: { slug },
+    where: { slug, published: true },
     select: { id: true, pin: true },
   });
 
@@ -28,10 +34,28 @@ export async function POST(request: Request, { params }: Props) {
     return NextResponse.json({ error: "Entrega no encontrada" }, { status: 404 });
   }
 
-  if (!delivery.pin || delivery.pin.trim() === pin.trim()) {
-    // PIN correcto: establecemos la cookie de autorización
+  if (!delivery.pin) {
+    return NextResponse.json({ success: true });
+  }
+
+  // Dos frenos: por persona, y por entrega en total. El segundo es el que
+  // para a quien reparte los intentos entre muchas direcciones: un PIN de
+  // cuatro números son 10.000 combinaciones, y a 60 por hora son semanas.
+  const clavePersona = `pin:${delivery.id}:${ipDe(request)}`;
+  if (
+    (await superaLimite(clavePersona, 8, QUINCE_MINUTOS)) ||
+    (await superaLimite(`pin:${delivery.id}`, 60, UNA_HORA))
+  ) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Esperá unos minutos y probá de nuevo." },
+      { status: 429 },
+    );
+  }
+
+  if (pinCorrecto(pin, delivery.pin)) {
+    await olvidarIntentos(clavePersona);
     const cookieStore = await cookies();
-    cookieStore.set(`pin_${delivery.id}`, "authorized", {
+    cookieStore.set(cookieDeEntrega(delivery.id), paseDeEntrega(delivery.id, delivery.pin), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       path: "/",

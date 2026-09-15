@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 
 import { CartView } from "@/components/cart-view";
 
-export const metadata: Metadata = { title: "Carrito" };
+/// Fuera de Google: un carrito vacío no le sirve a nadie que busca, y aparecía
+/// entre los primeros resultados del sitio. `follow` sigue permitido para que
+/// el robot llegue igual a lo que se enlaza desde acá.
+export const metadata: Metadata = { title: "Carrito", robots: { index: false, follow: true } };
 
 export default function CarritoPage() {
   return (

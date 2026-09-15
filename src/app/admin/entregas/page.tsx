@@ -127,6 +127,7 @@ export default async function EntregasPage({ searchParams }: Props) {
                 <Link
                   href={`/entrega/${entrega.slug}`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="text-xs border border-line rounded px-3 py-1.5 text-muted hover:text-ink hover:border-accent transition-colors inline-flex items-center gap-1"
                 >
                   Ver galería ↗

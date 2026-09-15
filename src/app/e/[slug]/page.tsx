@@ -1,5 +1,7 @@
-import { TextoEntrante } from "@/components/texto-entrante";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
+import { TextoEntrante } from "@/components/texto-entrante";
 
 import { Gallery } from "@/components/gallery";
 import { PreciosEscalonados } from "@/components/precios-escalonados";
@@ -8,18 +10,59 @@ import { leerEscalones } from "@/lib/ajustes";
 
 import { fecha, plural, precio } from "@/lib/format";
 import { PHOTOS_PER_PAGE, photoSelect, toPhotoDTO } from "@/lib/photos";
+import { grafoBase, jsonLd, migaDePan } from "@/lib/seo";
+import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateMetadata({ params }: Props) {
+/**
+ * Cada partido arma su propia descripción con sus datos de verdad.
+ *
+ * Antes todos compartían la general del sitio y Google, al verla repetida,
+ * la descartaba y mostraba lo primero que encontraba en la página: el pie. Con
+ * la fecha, el lugar y el precio, el resultado ya le dice al jugador que es su
+ * partido antes de entrar.
+ */
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const evento = await db.event.findFirst({
     where: { slug, published: true },
-    select: { title: true },
+    select: {
+      title: true,
+      date: true,
+      location: true,
+      category: true,
+      priceArs: true,
+      coverKey: true,
+      _count: { select: { photos: true } },
+      photos: { take: 1, orderBy: { takenAt: "asc" }, select: { thumbKey: true } },
+    },
   });
-  return { title: evento?.title ?? "Partido" };
+  if (!evento) return { title: "Partido" };
+
+  const donde = evento.location ? ` en ${evento.location}` : "";
+  const deporte = evento.category ? ` de ${evento.category.toLowerCase()}` : "";
+  const descripcion =
+    `Fotos${deporte} de ${evento.title}, ${fecha(evento.date)}${donde}. ` +
+    `${plural(evento._count.photos, "foto", "fotos")} a ${precio(evento.priceArs)} cada una: ` +
+    `elegí las tuyas, pagá con MercadoPago y descargalas al instante sin marca de agua.`;
+  const portada = evento.coverKey ?? evento.photos[0]?.thumbKey;
+  const ruta = `/e/${slug}`;
+
+  return {
+    title: `Fotos de ${evento.title}`,
+    description: descripcion,
+    alternates: { canonical: ruta },
+    openGraph: {
+      ...grafoBase,
+      url: ruta,
+      title: `Fotos de ${evento.title}`,
+      description: descripcion,
+      ...(portada ? { images: [{ url: publicUrl(portada), alt: evento.title }] } : {}),
+    },
+  };
 }
 
 export default async function EventoPage({ params }: Props) {
@@ -42,6 +85,10 @@ export default async function EventoPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl px-5">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(migaDePan([{ nombre: evento.title, ruta: `/e/${evento.slug}` }]))}
+      />
       <section className="py-10 sm:py-14 border-b border-line">
         <p className="etiqueta text-accent mb-4 tabular-nums">{fecha(evento.date)}</p>
         <TextoEntrante as="h1" className="titulo text-4xl sm:text-6xl text-balance">

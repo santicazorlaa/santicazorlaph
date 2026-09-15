@@ -19,7 +19,9 @@ type Props = { params: Promise<{ documento: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { documento } = await params;
   const doc = DOCUMENTOS[documento];
-  return { title: doc?.titulo ?? "Legales" };
+  // Tienen que existir para dar seriedad, pero no tienen que aparecer cuando
+  // alguien busca a Santi: ocupaban lugar de resultados que sí sirven.
+  return { title: doc?.titulo ?? "Legales", robots: { index: false, follow: true } };
 }
 
 export default async function LegalPage({ params }: Props) {

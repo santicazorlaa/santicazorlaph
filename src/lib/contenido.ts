@@ -41,6 +41,8 @@ export const CLAVES = [
   "notificaciones.email",
   "legal.terminos",
   "legal.privacidad",
+  "seo.titulo",
+  "seo.descripcion",
 ] as const;
 
 export type Clave = (typeof CLAVES)[number];
@@ -87,6 +89,13 @@ const DEFECTOS: Record<Clave, string> = {
   "notificaciones.email": "",
   "legal.terminos": "",
   "legal.privacidad": "",
+  // Lo que muestra Google en el resultado de la portada. Traen texto de
+  // fábrica porque describen el sitio tal como es, sin prometer nada: sin una
+  // descripción propia Google arma una con lo primero que encuentra, y
+  // encontraba el pie de página.
+  "seo.titulo": "Santi Cazorla Photography — Fotografía deportiva en Tucumán",
+  "seo.descripcion":
+    "Fotógrafo deportivo en Tucumán. Buscá las fotos de tu partido, pagalas con MercadoPago y descargalas al instante en alta resolución, sin marca de agua.",
 };
 
 export type Contenido = Record<Clave, string>;

@@ -362,6 +362,29 @@ export default async function ContenidoPage({ searchParams }: Props) {
       </Seccion>
 
       <Seccion
+        titulo="Cómo aparecés en Google"
+        descripcion="El título y el texto de la portada en los resultados de búsqueda, y en la vista previa cuando alguien comparte el link por WhatsApp. Google tarda días o semanas en tomar un cambio."
+      >
+        <form action={guardar} className="grid gap-5">
+          <Campo
+            clave="seo.titulo"
+            etiqueta="Título en Google"
+            ayuda="El renglón azul del resultado. Conviene que diga quién sos, qué hacés y dónde. Con más de 60 letras, Google lo corta."
+            valor={c["seo.titulo"]}
+            placeholder="Santi Cazorla Photography — Fotografía deportiva en Tucumán"
+          />
+          <Campo
+            clave="seo.descripcion"
+            etiqueta="Descripción en Google"
+            ayuda="Los renglones grises de abajo. Entre 120 y 160 letras: más largo, Google lo corta. Cada partido arma la suya sola, con la fecha, el lugar y el precio."
+            valor={c["seo.descripcion"]}
+            filas={3}
+          />
+          <Guardar />
+        </form>
+      </Seccion>
+
+      <Seccion
         titulo="Legales"
         descripcion="Los dos textos que dan seriedad institucional. Aparecen como links en el pie sólo si los escribís. Un renglón corto y sin punto final se muestra como subtítulo."
       >

@@ -493,6 +493,57 @@ hay, para quien no ve el dibujo. El número al lado es lo único que cambia de
 ancho, y el saltito al cambiar es a propósito: es lo que confirma, desde la otra
 punta de la pantalla, que la foto entró.
 
+**Google lee lo que el sitio le dice de sí mismo, y antes no le decía nada.**
+Sin descripción propia por página, Google mostraba el pie ("Tucumán, Argentina.
+santicazorlaph@gmail.com. Seguime…"), ponía "santicazorlaph.com" como nombre y
+un globito gris como ícono, y el carrito y los legales salían entre los
+primeros resultados. Lo que hay ahora:
+
+- La portada toma título y descripción de `seo.titulo` / `seo.descripcion`
+  (panel → Contenido → "Cómo aparecés en Google"). Cada partido arma los suyos
+  con fecha, lugar, cantidad y precio; el título empieza con "Fotos de", que es
+  como se busca.
+- Datos estructurados en `src/lib/seo.ts`: `WebSite` (el nombre del sitio en
+  Google), `ProfessionalService` (logo, Instagram, Tucumán) y la miga de pan de
+  cada partido. Siempre pasan por `jsonLd()`, que escapa `<`: un título con
+  `</script>` si no cortaría el bloque.
+- `robots.ts` y `sitemap.ts` (dinámico: un partido nuevo figura en el día).
+- **El carrito y los legales van con `noindex` pero NO en `robots.txt`.** Si el
+  robot no puede entrar, no lee el `noindex`, y lo que ya está en Google se
+  queda para siempre.
+- `favicon.ico` y `apple-icon.png` los genera `scripts/generar-icono.ts`. Google
+  busca `/favicon.ico` aunque la página declare otro ícono.
+- `alternates.canonical` va en cada página y **nunca en el layout**: ahí lo
+  heredarían todas y le dirían a Google que cada partido es la portada.
+
+**Lo que se puede adivinar probando tiene freno** (`src/lib/limite.ts`, tabla
+`Intento`): la contraseña del panel (5 cada 15 min por dirección), el PIN de una
+entrega (8 cada 15 min por dirección y 60 por hora en total, que es lo que para
+a quien reparte los intentos) y la creación de órdenes (20 por hora). Cuenta en
+la base y no en memoria porque en Vercel cada pedido puede caer en otra
+máquina. Si la base falla, deja pasar: mejor un rato sin freno que Santi afuera
+de su panel.
+
+**El pase de una entrega con PIN es una firma, no la palabra "authorized".**
+Antes bastaba con escribirse esa cookie a mano para ver las fotos sin saber el
+PIN. Ahora es un HMAC de la entrega y su PIN (`entregaAutorizada` en `auth.ts`):
+cambiar el PIN invalida los pases viejos.
+
+**La sesión del panel se firma junto con una huella de la contraseña.** Cambiar
+`ADMIN_PASSWORD` en Vercel cierra todas las sesiones abiertas: es la forma de
+echar a alguien que se haya llevado la cookie.
+
+**Encabezados de seguridad en `next.config.ts`**: nadie puede meter el sitio en
+un marco ajeno, el navegador no adivina tipos de archivo, al salir hacia otro
+sitio no se cuenta la dirección completa (y desde `/compra` y `/entrega`, ni el
+origen, porque su dirección es la llave). **No hay `script-src` a propósito**:
+exige firmar cada script de Next en cada pedido, y un error ahí deja el sitio en
+blanco, checkout incluido.
+
+**Hay un agente auditor de sólo lectura** en `.claude/agents/auditor-seguridad.md`
+(puede leer y buscar, no escribir ni ejecutar). Usarlo antes de publicar algo que
+toque pagos, descargas, el panel, entregas o subidas.
+
 ## Cosas que muerden
 
 - **En Windows, `npm run build` falla si el dev server está corriendo**: tiene
@@ -603,7 +654,25 @@ npx tsx --conditions=react-server --env-file=.env scripts/revisar-pendientes.ts
 
 ## Qué falta
 
-Ya está todo publicado. Lo que queda:
+0. **Mejoras de Google y de seguridad del 15 de septiembre de 2026: hechas y
+   probadas en local, sin publicar.** Para publicar hacen falta los dos pasos de
+   siempre: `npm run migrar:produccion` (crea la tabla `Intento`, sólo agrega) y
+   subir el código. Al publicar, la sesión del panel se cierra una vez (cambió
+   la firma) y los jugadores con PIN lo tienen que volver a poner una vez.
+   Después, dar de alta el sitio en Google Search Console y mandarle
+   `https://www.santicazorlaph.com/sitemap.xml`.
+
+   La base de desarrollo tenía la migración de entregas sin anotar (las tablas
+   se habían creado a mano); se anotó como aplicada con `migrate resolve`.
+   `.env.vercel` tenía `NEXT_PUBLIC_SITE_URL` sin `www`; se corrigió (Vercel ya
+   usaba la buena).
+
+   Quedan tres errores de lint **anteriores** (`cart-context.tsx` y dos en
+   `visor-portfolio.tsx`), y `npm audit` marca `deepmerge-ts` dentro de la CLI
+   de Prisma: es herramienta de desarrollo, no corre en el sitio, y arreglarlo
+   pide saltar a Prisma v8, que está descartado.
+
+Lo que ya estaba pendiente:
 
 1. **Lo bueno está en producción, no en desarrollo.** El 10 de septiembre de
    2026 Santi subió las fotos del portfolio y escribió los textos del sitio

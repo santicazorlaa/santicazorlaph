@@ -27,7 +27,13 @@ export default async function LoginPage({ searchParams }: Props) {
           autoFocus
           className="w-full bg-surface border border-line rounded-md px-3 py-2.5 focus:border-accent outline-none"
         />
-        {error && <p className="text-sm text-danger">Contraseña incorrecta.</p>}
+        {error && (
+          <p className="text-sm text-danger">
+            {error === "limite"
+              ? "Demasiados intentos seguidos. Esperá 15 minutos y probá de nuevo."
+              : "Contraseña incorrecta."}
+          </p>
+        )}
         <BotonEnvioNativo
           enviando="Entrando"
           className="w-full bg-accent-solid text-accent-ink rounded-md py-3 inline-flex items-center justify-center"

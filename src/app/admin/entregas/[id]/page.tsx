@@ -184,6 +184,7 @@ export default async function DetalleEntregaPage({ params, searchParams }: Props
             <Link
               href={`/entrega/${entrega.slug}`}
               target="_blank"
+              rel="noopener noreferrer"
               className="text-xs font-medium text-accent hover:underline underline-offset-4"
             >
               Ver como jugador ↗

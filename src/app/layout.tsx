@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 import { WhatsappFlotante } from "@/components/whatsapp-flotante";
 import { leerContenido, linkWhatsapp } from "@/lib/contenido";
 import { siteName, siteUrl } from "@/lib/env";
+import { grafoBase } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -29,14 +30,23 @@ const interTight = Inter_Tight({
   display: "swap",
 });
 
+/// Lo que hereda cualquier pantalla que no diga lo suyo. Las que importan para
+/// Google —la portada, cada partido, el portfolio— arman su propio título,
+/// descripción y dirección canónica.
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: siteName,
   title: {
-    default: `${siteName} — Fotos de partidos`,
+    default: `${siteName} — Fotografía deportiva en Tucumán`,
     template: `%s · ${siteName}`,
   },
   description:
-    "Fotografía deportiva. Encontrá las fotos de tu partido y llevátelas en alta resolución, sin marca de agua.",
+    "Fotógrafo deportivo en Tucumán. Buscá las fotos de tu partido, pagalas con MercadoPago y descargalas al instante en alta resolución, sin marca de agua.",
+  openGraph: grafoBase,
+  twitter: { card: "summary_large_image" },
+  // Sin esto, el iPhone convierte en link cualquier número largo, como el
+  // código de una foto.
+  formatDetection: { telephone: false },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

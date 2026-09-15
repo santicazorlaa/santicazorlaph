@@ -5,15 +5,34 @@ import { GrillaPortfolio } from "@/components/grilla-portfolio";
 import { SenalDeLink } from "@/components/senal-link";
 import { leerContenido, linkWhatsapp } from "@/lib/contenido";
 import { db } from "@/lib/db";
+import { grafoBase } from "@/lib/seo";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Portfolio",
-  description:
-    "Una selección del trabajo de Santi Cazorla: fotografía deportiva en Tucumán.",
-};
+const DESCRIPCION =
+  "Portfolio de Santi Cazorla, fotógrafo deportivo en Tucumán: una selección elegida a mano de fotos de partidos y eventos deportivos.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  // La primera foto del portfolio es la vista previa al compartir el link: es
+  // la carta de presentación, así que tiene que ser una foto de verdad.
+  const primera = await db.portfolioPhoto.findFirst({
+    orderBy: [{ orden: "asc" }, { createdAt: "desc" }],
+    select: { thumbKey: true, width: true, height: true, titulo: true },
+  });
+  return {
+    title: "Portfolio de fotografía deportiva",
+    description: DESCRIPCION,
+    alternates: { canonical: "/portfolio" },
+    openGraph: {
+      ...grafoBase,
+      url: "/portfolio",
+      title: "Portfolio de fotografía deportiva",
+      description: DESCRIPCION,
+      ...(primera ? { images: [{ url: publicUrl(primera.thumbKey), alt: primera.titulo ?? "" }] } : {}),
+    },
+  };
+}
 
 /**
  * El portfolio completo.

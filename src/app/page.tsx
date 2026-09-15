@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Aparecer } from "@/components/aparecer";
@@ -7,9 +8,32 @@ import { ListaPartidos, type PartidoEnLista } from "@/components/lista-partidos"
 import { leerContenido, leerLineas, leerPasos, linkWhatsapp } from "@/lib/contenido";
 import { db } from "@/lib/db";
 import { fechaBreve, hace, plural, precio } from "@/lib/format";
+import { datosDelSitio, grafoBase, jsonLd } from "@/lib/seo";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
+
+/// El título y la descripción los escribe Santi en el panel ("Cómo aparecés en
+/// Google"). La imagen al compartir es la tapa limpia del encabezado.
+export async function generateMetadata(): Promise<Metadata> {
+  const c = await leerContenido();
+  const titulo = c["seo.titulo"].trim();
+  const descripcion = c["seo.descripcion"].trim();
+  const tapa = c["hero.fotoKey"];
+
+  return {
+    ...(titulo ? { title: { absolute: titulo } } : {}),
+    ...(descripcion ? { description: descripcion } : {}),
+    alternates: { canonical: "/" },
+    openGraph: {
+      ...grafoBase,
+      url: "/",
+      ...(titulo ? { title: titulo } : {}),
+      ...(descripcion ? { description: descripcion } : {}),
+      ...(tapa ? { images: [{ url: publicUrl(tapa), width: 1920, height: 800 }] } : {}),
+    },
+  };
+}
 
 export default async function Home() {
   const [contenido, eventos, destacadas] = await Promise.all([
@@ -82,6 +106,10 @@ export default async function Home() {
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(datosDelSitio(contenido, tapa ? publicUrl(tapa) : null))}
+      />
       <section
         className={`relative border-b border-line overflow-hidden flex items-end ${
           // La altura sale de la misma proporción con la que Santi encuadró la

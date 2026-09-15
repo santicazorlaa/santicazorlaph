@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 
 import { TextoEntrante } from "@/components/texto-entrante";
 import { PinGate } from "@/components/pin-gate";
 import { DeliveryGallery } from "@/components/delivery-gallery";
+import { entregaAutorizada } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { fecha, plural } from "@/lib/format";
 import { toDeliveryPhotoDTO } from "@/lib/deliveries";
@@ -42,21 +42,16 @@ export default async function EntregaPage({ params }: Props) {
   if (!entrega) notFound();
 
   // Verificación de PIN si la entrega tiene uno configurado
-  if (entrega.pin) {
-    const cookieStore = await cookies();
-    const authorized = cookieStore.get(`pin_${entrega.id}`);
-
-    if (!authorized || authorized.value !== "authorized") {
-      return (
-        <div className="mx-auto max-w-4xl px-5">
-          <PinGate
-            slug={entrega.slug}
-            title={entrega.title}
-            clientName={entrega.clientName}
-          />
-        </div>
-      );
-    }
+  if (!(await entregaAutorizada(entrega))) {
+    return (
+      <div className="mx-auto max-w-4xl px-5">
+        <PinGate
+          slug={entrega.slug}
+          title={entrega.title}
+          clientName={entrega.clientName}
+        />
+      </div>
+    );
   }
 
   // Traer las primeras 48 fotos para la grilla inicial

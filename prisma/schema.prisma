@@ -128,6 +128,17 @@ model Ajuste {
   valor String
 }
 
+/// Cuántas veces se intentó algo que se puede adivinar a la fuerza —la
+/// contraseña del panel, el PIN de una entrega— o abusar —crear órdenes—, por
+/// dirección y en una ventana de tiempo. Vive en la base y no en la memoria
+/// del servidor porque en Vercel cada pedido puede caer en una máquina
+/// distinta: un contador en memoria se reiniciaría solo y no frenaría a nadie.
+model Intento {
+  clave  String   @id
+  cuenta Int
+  desde  DateTime
+}
+
 /// Una foto del portfolio: la selección curada que Santi muestra como carta de
 /// presentación, sobre todo a organizadores y marcas.
 ///

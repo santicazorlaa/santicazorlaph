@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { entregaAutorizada } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toDeliveryPhotoDTO } from "@/lib/deliveries";
 
@@ -23,13 +23,11 @@ export async function GET(request: Request, { params }: Props) {
     return NextResponse.json({ error: "Entrega no encontrada" }, { status: 404 });
   }
 
-  // Verificamos si tiene PIN y si está autorizado
-  if (delivery.pin) {
-    const cookieStore = await cookies();
-    const authorized = cookieStore.get(`pin_${delivery.id}`);
-    if (!authorized) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+  // Con PIN, sólo quien lo ingresó: la cookie tiene que traer la firma que
+  // emitió el servidor, no alcanza con que exista. Antes alcanzaba, y bastaba
+  // con inventarse la cookie para ver las fotos sin saber el PIN.
+  if (!(await entregaAutorizada(delivery))) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
   const whereClause: { deliveryId: string; code?: { contains: string } | string } = {

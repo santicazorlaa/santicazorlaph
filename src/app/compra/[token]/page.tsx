@@ -11,7 +11,14 @@ import { OrderStatus, reconcilePendingOrder } from "@/lib/orders";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Tu compra", robots: { index: false } };
+/// La dirección de esta pantalla es la llave de la compra: quien la tiene,
+/// descarga las fotos. Con `no-referrer` el navegador no se la cuenta a ningún
+/// otro sitio al que se salte desde acá.
+export const metadata: Metadata = {
+  title: "Tu compra",
+  robots: { index: false, follow: false },
+  referrer: "no-referrer",
+};
 
 type Props = { params: Promise<{ token: string }> };
 
