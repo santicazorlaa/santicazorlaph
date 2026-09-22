@@ -30,8 +30,11 @@ export async function descargarFotoBlob(url: string, filename: string): Promise<
     return true;
   } catch (err) {
     console.error("No se pudo descargar como blob, usando fallback:", err);
-    // Fallback: abrir en pestaña si falla
-    window.open(url, "_blank");
+    // Fallback: abrir en pestaña si falla. Va con `noopener` como todo lo que
+    // abre una pestaña en el sitio: sin eso, la página que se abre queda con
+    // una referencia a la nuestra y puede cambiarle la dirección por una copia
+    // falsa mientras el que la abrió mira la foto.
+    window.open(url, "_blank", "noopener");
     return false;
   }
 }

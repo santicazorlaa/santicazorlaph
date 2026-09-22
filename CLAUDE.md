@@ -111,6 +111,73 @@ el mouse por encima": lo que se revele con hover y no lleve esa variante queda
 escondido para siempre en el celular. Ya pasó una vez —el botón "Agregar" de la
 galería no aparecía nunca en el teléfono— y por eso existe la variante.
 
+**Hay un solo visor de fotos y un solo gesto para pasar de una a otra.**
+`src/components/visor-deslizante.tsx` tiene el diálogo, el deslizamiento con el
+dedo, las flechas, el teclado y la medida del alto real de la pantalla; la
+galería de un partido (`lightbox.tsx`) y la de una entrega
+(`delivery-lightbox.tsx`) sólo le pasan qué dice cada barra y de dónde sale la
+imagen. Antes eran dos copias y la de las entregas se quedó atrás: sin
+`touch-action: none` el navegador se quedaba con el movimiento y el
+deslizamiento peleaba contra el scroll; el cambio de foto se hacía escribiendo
+el corrimiento a mano en el nodo, en dos pasadas, y el carro volvía al centro
+antes de que React dibujara la foto nueva, lo que se veía como un salto; y sin
+darle identidad a cada foto, el navegador volvía a resolver la imagen en vez de
+mover el nodo de la vecina, que ya estaba dibujada. **Al tocar el visor se
+toca el compartido, no una copia**, y hay que probar los dos lugares.
+
+Las fotos de una entrega vienen de Google Drive y tardan bastante más que las
+del sitio, así que ese visor muestra la miniatura de la grilla —ya
+descargada— abajo de la grande mientras baja: nunca hay un marco vacío. Es la
+misma idea que usa el visor del portfolio.
+
+**La foto del visor se acerca, y el acercamiento y el deslizamiento son dos
+transformaciones separadas.** El zoom se escribe sobre la foto del medio; el
+deslizamiento, sobre el carro que lleva a las tres. Por eso se pudo sumar sin
+tocar nada de lo que ya andaba, y por eso no se pueden juntar: si el zoom se
+escribiera sobre el carro, acercar una foto acercaría también a las vecinas y
+correría el lugar desde donde salen.
+
+Quién se queda con los dedos se decide en un solo lugar y con una regla corta:
+**con la foto entera todo funciona exactamente como antes** —un dedo pasa de
+foto—; acercada, el dedo mueve la foto. Con dos dedos siempre se acerca. En una
+computadora es la rueda del mouse, el doble clic y arrastrar con el botón
+apretado. Las cuentas están aparte, en `src/lib/zoom-foto.ts`, **sin
+`server-only`**, por lo mismo que los descuentos y el encuadre: son aritmética
+pura y se leen solas.
+
+Tres cosas de ahí que no son gusto:
+
+- **Se acerca abajo de los dedos, no desde el centro.** Acercando desde el
+  centro, lo que uno estaba mirando se le va de la pantalla y hay que salir a
+  buscarlo. Acercar y correr salen de una sola cuenta (`anclar`), porque son un
+  solo movimiento: pellizcar moviendo la mano hace las dos a la vez.
+- **Hasta dónde se puede correr la foto se mide contra la foto, no contra el
+  marco.** El visor la mete entera adentro sin recortarla, así que casi siempre
+  sobra aire a los costados o arriba: midiendo contra el marco se podría
+  arrastrar la foto hacia ese vacío y se leería como que se escapa. Si de un eje
+  no hay nada escondido —una apaisada apenas acercada en un celular parado— ese
+  eje no se mueve, porque no hay nada que mostrar.
+- **Sólo un toque quieto cuenta como mitad de un doble toque.** Tomando
+  cualquier apoyo, dos deslizamientos rápidos y seguidos desde el mismo lugar
+  —que es exactamente cómo se recorre una galería— se leen como un doble toque y
+  la foto se acerca sola. Se anota al levantar el dedo, no al apoyarlo, y sólo
+  si no se movió.
+- **Un `dblclick` que llega justo después de un toque se descarta.** Un teléfono,
+  después de un doble toque, manda además los eventos de mouse que mandaría una
+  computadora, `dblclick` incluido, para que ande una página que sólo sabe de
+  mouse. Acá eso era un tiro en el pie: los dos dedos acercaban la foto y ese
+  evento de más la alejaba en el acto, así que **el doble toque no hacía nada**.
+  Se descarta cualquier `dblclick` que caiga dentro de los 900ms de haber
+  tocado la pantalla. Es la clase de error que no aparece nunca en la máquina
+  donde uno escribe y sí en el teléfono de Santi.
+
+**Acercada, deslizar no pasa de foto: mueve la foto.** No hay forma de que haga
+las dos cosas sin que una salga mal, y por eso aparece el cartel con el
+acercamiento abajo a la izquierda, que además es el botón para volver a la foto
+entera. Sin ese cartel, alguien acercado que desliza y no pasa de foto lee que
+el visor se trabó. Las flechas y el teclado sí siguen pasando de foto, y al
+hacerlo el zoom vuelve a cero solo.
+
 **La miniatura se mide por el ancho y la foto grande por el lado más largo.**
 No es un descuido: la grilla le da a cada foto una columna del mismo ancho, así
 que ahí igualar el ancho es lo que las deja parejas de nitidez; el lightbox, en
@@ -460,8 +527,34 @@ peso, no estético.
 **La grilla de fotos reparte siempre desde la primera.** Cada foto va a la
 columna más corta mirando sólo las anteriores, así al traer más fotos las que ya
 estaban caen en el mismo lugar. Si se dejara balancear las columnas al navegador
-(`columns` de CSS), cada "Cargar más" movería de lugar todo lo de arriba justo
-cuando el comprador lo está mirando.
+(`columns` de CSS), cada tanda nueva movería de lugar todo lo de arriba justo
+cuando el comprador lo está mirando. Desde que las fotos se traen solas esto
+pesa más todavía: antes el salto pasaba cuando uno apretaba un botón y podía
+atribuirlo a eso; ahora pasaría sin que nadie tocara nada.
+
+**No hay botón de "Cargar más fotos": las que siguen se piden solas.** Un hueco
+invisible al pie de la grilla avisa cuando se acerca a la pantalla
+(`IntersectionObserver` con casi una pantalla de margen, así llegan antes de que
+se acaben las que hay). Los huecos grises mientras vienen son ahora lo único que
+dice que hay más en camino, y sin ellos el final de la grilla parece el final de
+las fotos.
+
+Dos cosas que eso obliga, las dos porque ya nadie aprieta nada:
+
+- **Una tanda vacía se toma como el final de verdad**, diga lo que diga la
+  cuenta de cuántas hay. Cualquier diferencia entre el total y lo que devuelve
+  el servidor —una foto borrada, por ejemplo— se volvería un pedido atrás del
+  otro para siempre.
+- **Si el pedido se cae hay que decirlo y dar con qué reintentar.** Con un botón
+  siempre había cómo volver a probar; sin él, la grilla se quedaría corta y en
+  silencio, y el que mira se va convencido de que ésas eran todas las fotos.
+
+**En el visor, las que siguen se piden tres fotos antes del final.** No al
+llegar: en la última foto cargada el visor no deja seguir —no hay siguiente—,
+así que el que va deslizando se chocaba contra una pared y tenía que cerrar,
+apretar "cargar más" y volver a entrar. Abrir una foto y pasar a otra van los
+dos por la misma función (`irA`), que es la que pide, así que da lo mismo si se
+llega al final deslizando o tocando la anteúltima de la grilla.
 
 **REGLA OBLIGATORIA: Toda acción, filtro, botón, atajo o navegación debe dar respuesta visual inmediata.**
 La pantalla jamás puede quedarse estática ni parecer colgada entre la interacción del usuario y la respuesta del servidor. Cualquier cambio, mejora o funcionalidad nueva que se agregue al sitio DEBE respetar este principio sin excepciones:
