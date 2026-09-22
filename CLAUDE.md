@@ -609,6 +609,41 @@ primeros resultados. Lo que hay ahora:
 - `alternates.canonical` va en cada página y **nunca en el layout**: ahí lo
   heredarían todas y le dirían a Google que cada partido es la portada.
 
+**La actividad de una entrega se anota desde el navegador, porque las
+descargas no pasan por el servidor.** Los dos botones de descarga y el de la
+carpeta apuntan derecho a Google, así que sin un aviso explícito no hay forma
+de saber que alguien bajó una foto. El aviso va por `sendBeacon` a
+`POST /api/entrega/[slug]/evento`, que exige el mismo pase de PIN que la
+galería: nadie de afuera puede ensuciar los números. `sendBeacon` y no un
+`fetch` común porque el clic de "máxima calidad" abre otra pestaña y se lleva
+la atención; un pedido normal se perdería la mitad de las veces.
+
+Se anotan cinco cosas (`src/lib/actividad-entrega.ts`, **sin `server-only`**:
+la lista la usan el navegador para avisar y el servidor para aceptar y para
+escribir el panel): entró, miró una foto, descargó para redes, descargó el
+original, apretó el botón de Drive. Las dos primeras van una sola vez por
+visita, porque recargar no es entrar de nuevo y volver a una foto no es
+mirarla de nuevo: sin eso la pregunta "qué fotos gustaron" se ahoga en ruido.
+
+**Lo que pasa adentro de Google Drive no se puede saber, y el panel lo dice
+así.** Drive no nos cuenta quién abre la carpeta ni qué baja desde ahí. Por eso
+el número se llama "apretaron el botón" y no "entraron", y hay una aclaración
+al lado. Si algún día se quiere de verdad, habría que servir las descargas por
+una dirección propia en vez de mandar a Drive, y eso significa que los archivos
+pasen por el servidor: justo lo que se evitó al elegir Drive para las entregas.
+
+**No se guarda quién es nadie.** El visitante es un número al azar en una
+cookie (`sc_visita`): sin IP, sin nombre, sin mail. Sirve para contar personas
+en vez de clics, que es la diferencia entre "entraron ocho" y "hubo ochenta
+visitas". Si alguien borra sus datos de navegación vuelve a figurar como una
+persona nueva, y está bien que así sea. **Al sumar algo acá, no sumar nada que
+identifique**: son los jugadores de un equipo, no clientes de Santi.
+
+La pantalla vive aparte, en `/admin/entregas/[id]/actividad`, con su botón en
+la pantalla de la entrega. Las cuentas se hacen agrupando en la base y no
+trayendo los renglones para sumar acá: un lote de doscientas fotos con veinte
+personas junta miles de eventos.
+
 **Lo que se puede adivinar probando tiene freno** (`src/lib/limite.ts`, tabla
 `Intento`): la contraseña del panel (5 cada 15 min por dirección), el PIN de una
 entrega (8 cada 15 min por dirección y 60 por hora en total, que es lo que para

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { TextoEntrante } from "@/components/texto-entrante";
 import { PinGate } from "@/components/pin-gate";
+import { BotonDriveEntrega } from "@/components/boton-drive-entrega";
 import { DeliveryGallery } from "@/components/delivery-gallery";
 import { entregaAutorizada } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -82,14 +83,7 @@ export default async function EntregaPage({ params }: Props) {
             <span className="text-ink font-medium">✨ Descargas libres en máxima calidad</span>
           </div>
 
-          <a
-            href={entrega.driveUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs border border-line bg-surface hover:border-accent text-ink px-3.5 py-2 rounded-md font-medium transition-colors inline-flex items-center gap-1.5 shadow-sm"
-          >
-            <span>📂 Abrir lote en Google Drive ↗</span>
-          </a>
+          <BotonDriveEntrega slug={entrega.slug} url={entrega.driveUrl} />
         </div>
       </section>
 

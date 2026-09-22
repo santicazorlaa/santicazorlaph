@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { BotonEnvio } from "@/components/boton-envio";
 import { CopiarLinkEntrega } from "@/components/copiar-link-entrega";
+import { SenalDeLink } from "@/components/senal-link";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { fechaBreve, plural } from "@/lib/format";
@@ -101,6 +102,7 @@ export default async function DetalleEntregaPage({ params, searchParams }: Props
       photos: {
         orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
       },
+      _count: { select: { eventos: true } },
     },
   });
 
@@ -171,6 +173,22 @@ export default async function DetalleEntregaPage({ params, searchParams }: Props
             equipo={entrega.clientName}
             pin={entrega.pin}
           />
+
+          {/* La actividad va primera y como botón, no como un link más de la
+              fila de abajo: es lo que Santi quiere mirar al día siguiente de
+              mandar la entrega, y es lo que le dice si le llegó al equipo. */}
+          <Link
+            href={`/admin/entregas/${entrega.id}/actividad`}
+            className="etiqueta text-[0.65rem] rounded-full border border-line bg-surface px-4 py-2 con-mouse:hover:border-accent transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.97] inline-flex items-center"
+          >
+            Ver actividad
+            {entrega._count.eventos > 0 && (
+              <span className="ml-2 text-accent tabular-nums">
+                {entrega._count.eventos}
+              </span>
+            )}
+            <SenalDeLink />
+          </Link>
 
           <div className="flex items-center gap-3">
             <a

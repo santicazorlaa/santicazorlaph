@@ -191,7 +191,8 @@ model ClientDelivery {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  photos DeliveryPhoto[]
+  photos  DeliveryPhoto[]
+  eventos DeliveryEvent[]
 
   @@index([published, date])
   @@index([token])
@@ -217,6 +218,41 @@ model DeliveryPhoto {
 
   createdAt DateTime @default(now())
 
+  eventos DeliveryEvent[]
+
   @@index([deliveryId, takenAt])
+}
+
+/// Qué pasó adentro de una entrega: quién entró, qué fotos miró y qué se bajó.
+///
+/// **No guarda quién es nadie.** `visitante` es un número al azar que vive en
+/// una cookie del navegador de cada uno; sirve sólo para distinguir a una
+/// persona de otra y poder contar personas en vez de clics. No se guarda
+/// dirección IP, ni nombre, ni mail: si alguien borra sus datos de navegación,
+/// vuelve a figurar como una persona nueva, y está bien que así sea.
+///
+/// Lo que pasa adentro de Google Drive no se puede saber: Drive no nos cuenta
+/// quién abre la carpeta ni qué baja desde ahí. Por eso el evento `drive` es
+/// "apretó el botón que lleva a Drive" y no "entró a Drive".
+model DeliveryEvent {
+  id         String         @id @default(cuid())
+  deliveryId String
+  delivery   ClientDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  /// La foto, cuando el evento es de una foto. Queda en nulo si esa foto
+  /// desaparece de Drive y la sincronización la borra; por eso al lado va el
+  /// código copiado, que es lo que se lee en la lista y no se pierde nunca.
+  photoId String?
+  photo   DeliveryPhoto? @relation(fields: [photoId], references: [id], onDelete: SetNull)
+  codigo  String?
+
+  /// acceso | vio | redes | original | drive
+  tipo      String
+  visitante String
+  createdAt DateTime @default(now())
+
+  @@index([deliveryId, createdAt])
+  @@index([deliveryId, tipo])
+  @@index([deliveryId, photoId])
 }
 

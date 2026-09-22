@@ -4,12 +4,15 @@ import { useState } from "react";
 
 import type { DeliveryPhotoDTO } from "@/lib/deliveries";
 import { fechaBreve, horaDe } from "@/lib/format";
+import { avisarActividad } from "@/lib/actividad-entrega";
 import { descargarFotoBlob } from "@/lib/descargar-blob";
 import { respaldoDriveThumbUrl } from "@/lib/drive-respaldo";
 
 import { CabeceraVisor, VisorDeslizante } from "./visor-deslizante";
 
 type Props = {
+  /// De qué entrega es, para poder anotar lo que se descarga desde acá.
+  slug: string;
   photos: DeliveryPhotoDTO[];
   index: number;
   onClose: () => void;
@@ -83,7 +86,7 @@ function FotoDeEntrega({ foto, actual }: { foto: DeliveryPhotoDTO; actual: boole
 /// del gesto y se movía peor: sin frenar al navegador en el celular el
 /// deslizamiento peleaba contra el scroll, y el cambio de foto se hacía en dos
 /// pasadas, lo que dejaba un salto en el medio.
-export function DeliveryLightbox({ photos, index, onClose, onIndex }: Props) {
+export function DeliveryLightbox({ slug, photos, index, onClose, onIndex }: Props) {
   const photo = photos[index];
   const [bajandoRedes, setBajandoRedes] = useState(false);
 
@@ -133,6 +136,7 @@ export function DeliveryLightbox({ photos, index, onClose, onIndex }: Props) {
               disabled={bajandoRedes}
               onClick={async () => {
                 setBajandoRedes(true);
+                avisarActividad(slug, "redes", photo.id);
                 try {
                   await descargarFotoBlob(photo.previewUrl, `${photo.code}-redes.jpg`);
                 } finally {
@@ -152,6 +156,7 @@ export function DeliveryLightbox({ photos, index, onClose, onIndex }: Props) {
               href={photo.downloadUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => avisarActividad(slug, "original", photo.id)}
               className="etiqueta rounded-full bg-accent-solid text-accent-ink px-5 py-3 con-mouse:hover:opacity-90 transition-[opacity,transform] duration-150 ease-out active:scale-[0.97]"
             >
               Máxima calidad

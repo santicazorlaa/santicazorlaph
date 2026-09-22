@@ -5,6 +5,7 @@ import type { DeliveryPhotoDTO } from "@/lib/deliveries";
 import { Aparecer } from "./aparecer";
 import { DeliveryLightbox } from "./delivery-lightbox";
 import { HuecoGrilla } from "./huecos";
+import { avisarActividad, avisarUnaVez } from "@/lib/actividad-entrega";
 import { descargarFotoBlob } from "@/lib/descargar-blob";
 import { respaldoDriveThumbUrl } from "@/lib/drive-respaldo";
 
@@ -115,10 +116,22 @@ export function DeliveryGallery({ slug, totalPhotos, initialPhotos }: Props) {
   const irA = useCallback(
     (i: number) => {
       setOpenIndex(i);
+      // Una sola vez por foto y por visita: volver a una foto no es mirarla de
+      // nuevo para lo que a Santi le importa, que es qué fotos gustaron.
+      const foto = photos[i];
+      if (foto) avisarUnaVez(slug, "vio", foto.id);
       if (i >= photos.length - 3) void pedirMas();
     },
-    [photos.length, pedirMas],
+    [photos, slug, pedirMas],
   );
+
+  // Que alguien entró se anota acá y no en el servidor al escribir el PIN,
+  // porque el pase dura noventa días: el que ya entró una vez no vuelve a pasar
+  // por el PIN nunca más, y contando allá el segundo día en adelante no
+  // figuraría nadie. Una vez por visita, no por recarga.
+  useEffect(() => {
+    avisarUnaVez(slug, "acceso");
+  }, [slug]);
 
   // Las fotos siguen solas al llegar al final de la grilla. El aviso lo da un
   // hueco invisible puesto al pie: cuando se acerca a la pantalla, se piden las
@@ -272,6 +285,7 @@ export function DeliveryGallery({ slug, totalPhotos, initialPhotos }: Props) {
                       href={photo.downloadUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => avisarActividad(slug, "original", photo.id)}
                       className="flex-1 text-center etiqueta text-[0.6rem] rounded bg-accent-solid text-accent-ink px-2 py-1.5 transition-transform duration-150 ease-out active:scale-[0.96]"
                       title="Descargar el archivo original desde Google Drive"
                     >
@@ -282,6 +296,7 @@ export function DeliveryGallery({ slug, totalPhotos, initialPhotos }: Props) {
                       disabled={descargandoId === photo.id}
                       onClick={async () => {
                         setDescargandoId(photo.id);
+                        avisarActividad(slug, "redes", photo.id);
                         try {
                           await descargarFotoBlob(
                             photo.previewUrl,
@@ -348,6 +363,7 @@ export function DeliveryGallery({ slug, totalPhotos, initialPhotos }: Props) {
 
       {openIndex !== null && photos[openIndex] && (
         <DeliveryLightbox
+          slug={slug}
           photos={photos}
           index={openIndex}
           onClose={() => setOpenIndex(null)}
