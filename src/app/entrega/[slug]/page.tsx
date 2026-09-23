@@ -9,7 +9,7 @@ import { entregaAutorizada } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { fecha, plural } from "@/lib/format";
 import { toDeliveryPhotoDTO } from "@/lib/deliveries";
-import { grafoBase } from "@/lib/seo";
+import { grafoBase, urlAbsoluta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +20,11 @@ type Props = {
 /// La portada la elige Santi con el botón "Usar como portada" en el panel de
 /// la entrega. Sale igual sin PIN: es sólo la vista previa del link al
 /// compartirlo (WhatsApp, etc.), no la galería.
+///
+/// La imagen sale de nuestro propio dominio (`/api/entrega/[slug]/portada`) y
+/// no directo de Google: Google le rechaza la descarga a los robots de
+/// WhatsApp/Instagram cuando piden una imagen de Drive, aunque en el
+/// navegador se vea perfecto.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entrega = await db.clientDelivery.findUnique({
@@ -44,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       ...grafoBase,
       title: titulo,
-      ...(entrega.coverUrl ? { images: [{ url: entrega.coverUrl }] } : {}),
+      ...(entrega.coverUrl ? { images: [{ url: urlAbsoluta(`/api/entrega/${slug}/portada`) }] } : {}),
     },
   };
 }
