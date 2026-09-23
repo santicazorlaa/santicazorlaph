@@ -63,6 +63,8 @@ function repartir(photos: PhotoDTO[], columnas: number): Ubicada[][] {
   return cols;
 }
 
+type Equipo = { nombre: string; cantidad: number };
+
 type Props = {
   eventSlug: string;
   eventTitle: string;
@@ -70,6 +72,7 @@ type Props = {
   totalPhotos: number;
   packPriceArs: number | null;
   initialPhotos: PhotoDTO[];
+  equipos: Equipo[];
 };
 
 export function Gallery({
@@ -79,6 +82,7 @@ export function Gallery({
   totalPhotos,
   packPriceArs,
   initialPhotos,
+  equipos,
 }: Props) {
   const cart = useCart();
   const [photos, setPhotos] = useState(initialPhotos);
@@ -99,6 +103,11 @@ export function Gallery({
   // se quede pidiendo al vacío o en silencio.
   const [fallo, setFallo] = useState(false);
   const [finDeLista, setFinDeLista] = useState(false);
+  // Qué equipo se está mostrando. `null` es "Todas". La búsqueda por código
+  // mira todo el partido sin importar el equipo, así que las dos pestañas se
+  // pisan: elegir una limpia la otra, para no mostrar un estado imposible.
+  const [equipoActivo, setEquipoActivo] = useState<string | null>(null);
+  const [cambiandoEquipo, setCambiandoEquipo] = useState(false);
   const centinela = useRef<HTMLDivElement>(null);
   const inputCodigo = useRef<HTMLInputElement>(null);
   /// Si hay un pedido en vuelo. Va en una referencia y no en el estado de
@@ -123,7 +132,15 @@ export function Gallery({
     [eventSlug, eventTitle, priceArs, totalPhotos, packPriceArs],
   );
 
-  const quedanPorCargar = !filtrando && !finDeLista && photos.length < totalPhotos;
+  // El total de "Todas" es el del partido entero; el de un equipo, el que
+  // vino agrupado del servidor. `totalPhotos` en sí no se toca: de ahí sale
+  // `totalFotosEvento` en el carrito, del que depende el pack completo —ese
+  // sigue siendo llevarse todas las fotos del partido, no las de un equipo.
+  const totalActual = equipoActivo
+    ? (equipos.find((e) => e.nombre === equipoActivo)?.cantidad ?? 0)
+    : totalPhotos;
+
+  const quedanPorCargar = !filtrando && !finDeLista && photos.length < totalActual;
 
   const pedirMas = useCallback(async () => {
     if (pidiendo.current || !quedanPorCargar) return;
@@ -132,7 +149,9 @@ export function Gallery({
     setFallo(false);
     try {
       const res = await fetch(
-        `/api/eventos/${eventSlug}/fotos?desde=${photos.length}`,
+        `/api/eventos/${eventSlug}/fotos?desde=${photos.length}${
+          equipoActivo ? `&equipo=${encodeURIComponent(equipoActivo)}` : ""
+        }`,
       );
       if (!res.ok) throw new Error(`respondió ${res.status}`);
       const data = (await res.json()) as { photos: PhotoDTO[] };
@@ -148,7 +167,36 @@ export function Gallery({
       pidiendo.current = false;
       setLoading(false);
     }
-  }, [quedanPorCargar, eventSlug, photos.length]);
+  }, [quedanPorCargar, eventSlug, photos.length, equipoActivo]);
+
+  /// Cambia de pestaña de equipo, pidiendo su primera página al servidor.
+  /// Limpia cualquier búsqueda por código activa: son dos filtros que no se
+  /// combinan, y dejar los dos prendidos mostraría un estado imposible.
+  const elegirEquipo = useCallback(
+    async (nombre: string | null) => {
+      if (nombre === equipoActivo || cambiandoEquipo) return;
+      setCambiandoEquipo(true);
+      setFallo(false);
+      setFiltrando(false);
+      setCodigo("");
+      setSinResultado(false);
+      try {
+        const res = await fetch(
+          `/api/eventos/${eventSlug}/fotos${nombre ? `?equipo=${encodeURIComponent(nombre)}` : ""}`,
+        );
+        if (!res.ok) throw new Error(`respondió ${res.status}`);
+        const data = (await res.json()) as { photos: PhotoDTO[] };
+        setEquipoActivo(nombre);
+        setPhotos(data.photos);
+        setFinDeLista(false);
+      } catch {
+        setFallo(true);
+      } finally {
+        setCambiandoEquipo(false);
+      }
+    },
+    [eventSlug, equipoActivo, cambiandoEquipo],
+  );
 
   /// Abre una foto en el visor y, si está cerca del final, pide la tanda que
   /// sigue. Se pide antes de llegar y no al llegar porque en la última foto el
@@ -202,6 +250,7 @@ export function Gallery({
       setSinResultado(false);
       setFinDeLista(false);
       setFallo(false);
+      setEquipoActivo(null);
       setPhotos(initialPhotos);
       return;
     }
@@ -212,6 +261,10 @@ export function Gallery({
         `/api/eventos/${eventSlug}/fotos?codigo=${encodeURIComponent(q)}`,
       );
       const data = (await res.json()) as { photos: PhotoDTO[] };
+      // El código busca en todo el partido, sin importar la pestaña de
+      // equipo: la vuelve a "Todas" para que no quede una marcada mientras se
+      // ve el resultado de una búsqueda que las mira a todas.
+      setEquipoActivo(null);
       setFiltrando(true);
       setPhotos(data.photos);
       setSinResultado(data.photos.length === 0);
@@ -225,6 +278,37 @@ export function Gallery({
 
   return (
     <section className="py-8">
+      {/* Sólo aparece si Santi separó las fotos en dos o más equipos. Con uno
+          solo (o ninguno), la pestaña no agregaría nada. */}
+      {equipos.length > 1 && (
+        <div
+          className={`flex flex-wrap gap-2 mb-4 transition-opacity duration-200 ${
+            cambiandoEquipo ? "opacity-60" : "opacity-100"
+          }`}
+        >
+          {[{ nombre: null, cantidad: totalPhotos }, ...equipos].map((e) => {
+            const activa = e.nombre === equipoActivo;
+            return (
+              <button
+                key={e.nombre ?? "todas"}
+                type="button"
+                onClick={() => void elegirEquipo(e.nombre)}
+                disabled={cambiandoEquipo}
+                aria-pressed={activa}
+                className={`etiqueta text-xs rounded-full px-4 py-1.5 transition-colors flex items-center gap-1.5 ${
+                  activa
+                    ? "bg-accent-solid text-accent-ink font-medium"
+                    : "border border-line text-muted con-mouse:hover:border-accent con-mouse:hover:text-fg"
+                } ${cambiandoEquipo ? "cursor-wait" : ""}`}
+              >
+                {e.nombre ?? "Todas"}
+                <span className="opacity-70 tabular-nums">({e.cantidad})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
         <form onSubmit={buscarPorCodigo} className="flex gap-2">
           <label className="sr-only" htmlFor="codigo">
@@ -255,6 +339,7 @@ export function Gallery({
                 setSinResultado(false);
                 setFinDeLista(false);
                 setFallo(false);
+                setEquipoActivo(null);
                 setPhotos(initialPhotos);
               }}
               className="etiqueta text-muted hover:text-ink px-2"
@@ -265,7 +350,7 @@ export function Gallery({
         </form>
 
         <p className="text-sm text-muted tabular-nums">
-          Mostrando {photos.length} de {totalPhotos}
+          Mostrando {photos.length} de {totalActual}
         </p>
       </div>
 
@@ -275,7 +360,11 @@ export function Gallery({
         </p>
       )}
 
-      <div className="flex gap-3 items-start">
+      <div
+        className={`flex gap-3 items-start transition-opacity duration-200 ${
+          cambiandoEquipo ? "opacity-40 pointer-events-none" : "opacity-100"
+        }`}
+      >
         {repartir(photos, columnas).map((columna, c) => (
           <ul key={c} className="flex-1 min-w-0 flex flex-col gap-3">
             {columna.map(({ photo, indice }) => {

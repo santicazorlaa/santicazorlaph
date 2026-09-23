@@ -57,11 +57,17 @@ model Photo {
   lens    String?
   takenAt DateTime?
 
+  /// Nombre del equipo al que se le separó esta foto, si el partido tiene más
+  /// de uno. Texto libre como `Event.category`: cada partido usa los nombres
+  /// que corresponda, no hay una lista cerrada.
+  equipo String?
+
   createdAt DateTime @default(now())
 
   orderItems OrderItem[]
 
   @@index([eventId, takenAt])
+  @@index([eventId, equipo])
 }
 
 model Order {

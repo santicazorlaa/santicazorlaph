@@ -10,6 +10,7 @@ export async function GET(
   const { slug } = await params;
   const url = new URL(request.url);
   const codigo = url.searchParams.get("codigo");
+  const equipo = url.searchParams.get("equipo");
   const desde = Math.max(0, Number(url.searchParams.get("desde") ?? 0) || 0);
 
   const evento = await db.event.findFirst({
@@ -24,6 +25,7 @@ export async function GET(
     where: {
       eventId: evento.id,
       ...(codigo ? { code: codigo.toUpperCase() } : {}),
+      ...(equipo ? { equipo } : {}),
     },
     orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
     ...(codigo ? {} : { skip: desde, take: PHOTOS_PER_PAGE }),

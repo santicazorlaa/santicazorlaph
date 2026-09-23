@@ -12,6 +12,7 @@ export type PhotoDTO = {
   resolucion: string;
   camara: string | null;
   lente: string | null;
+  equipo: string | null;
 };
 
 type PhotoRow = {
@@ -25,6 +26,7 @@ type PhotoRow = {
   camera: string | null;
   lens: string | null;
   takenAt: Date | null;
+  equipo: string | null;
 };
 
 export function toPhotoDTO(p: PhotoRow): PhotoDTO {
@@ -37,6 +39,7 @@ export function toPhotoDTO(p: PhotoRow): PhotoDTO {
     resolucion: `${megapixels(p.width, p.height)}MP · ${formatBytes(p.sizeBytes)}`,
     camara: p.camera,
     lente: p.lens,
+    equipo: p.equipo,
   };
 }
 
@@ -51,4 +54,5 @@ export const photoSelect = {
   camera: true,
   lens: true,
   takenAt: true,
+  equipo: true,
 } as const;

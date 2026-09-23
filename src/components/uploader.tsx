@@ -68,18 +68,23 @@ async function subirUna(destino: Destino, file: File): Promise<string | null> {
 /// Las fotos se suben de a una y en serie: cada una se procesa en el servidor
 /// (marca de agua + miniaturas) y mandarlas todas juntas lo satura.
 export function Uploader({ eventId }: { eventId?: string }) {
-  // Sin partido, la foto va al portfolio: la selección curada, que no pertenece
-  // a ningún partido y no está a la venta.
-  const destino: Destino = eventId
-    ? { tipo: "partido", extra: { eventId } }
-    : { tipo: "portfolio", extra: {} };
-
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [cola, setCola] = useState<Estado[]>([]);
   const [trabajando, setTrabajando] = useState(false);
+  // Se aplica a toda la tanda que se está por subir, no foto por foto: es
+  // cómo Santi ya separa sus fotos antes de subirlas —una selección de
+  // archivos por equipo—, así que alcanza con pedírselo una vez por tanda.
+  const [equipo, setEquipo] = useState("");
 
   const subir = async (files: FileList) => {
+    // Sin partido, la foto va al portfolio: la selección curada, que no
+    // pertenece a ningún partido y no está a la venta. El portfolio no separa
+    // por equipo, así que ahí `extra` queda como estaba.
+    const destino: Destino = eventId
+      ? { tipo: "partido", extra: { eventId, ...(equipo.trim() ? { equipo: equipo.trim() } : {}) } }
+      : { tipo: "portfolio", extra: {} };
+
     const lista = Array.from(files);
     setCola(lista.map((f) => ({ nombre: f.name, estado: "esperando" })));
     setTrabajando(true);
@@ -121,6 +126,28 @@ export function Uploader({ eventId }: { eventId?: string }) {
     <section className="border border-line rounded-lg p-5">
       <h2 className="etiqueta text-muted mb-4">Subir fotos</h2>
 
+      {eventId && (
+        <div className="mb-4">
+          <label htmlFor="equipo" className="etiqueta text-muted block mb-1.5">
+            Equipo de esta tanda <span className="text-[0.65rem]">(opcional)</span>
+          </label>
+          <input
+            id="equipo"
+            list="equipos-partido"
+            value={equipo}
+            onChange={(e) => setEquipo(e.target.value)}
+            disabled={trabajando}
+            placeholder="Ej: Instituto"
+            className="w-full sm:w-64 bg-surface border border-line rounded-md px-3 py-2 text-sm focus:border-accent outline-none disabled:opacity-50"
+          />
+          <p className="mt-1.5 text-xs text-muted">
+            Se les asigna a todas las fotos que elijas ahora. Si cubriste a los dos equipos,
+            subilos en dos tandas separadas, cambiando este campo entre una y otra. Dejalo vacío
+            si no hace falta separarlas.
+          </p>
+        </div>
+      )}
+
       <input
         ref={input}
         type="file"
@@ -132,7 +159,7 @@ export function Uploader({ eventId }: { eventId?: string }) {
       />
 
       <p className="mt-3 text-xs text-muted">
-        {destino.tipo === "partido"
+        {eventId
           ? "Se les pone la marca de agua automáticamente. El original queda guardado aparte y no se muestra en ningún lado hasta que alguien lo compra."
           : "Van sin marca de agua y se ven grandes: son tu carta de presentación, no están a la venta. El original queda guardado y no se publica."}
       </p>

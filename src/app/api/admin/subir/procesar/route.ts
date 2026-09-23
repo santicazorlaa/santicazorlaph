@@ -13,6 +13,7 @@ const schema = z.object({
   eventId: z.string().min(1),
   objeto: z.string().uuid(),
   filename: z.string().min(1).max(255),
+  equipo: z.string().trim().max(60).optional(),
 });
 
 /**
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
 
-  const { eventId, objeto, filename } = parsed.data;
+  const { eventId, objeto, filename, equipo } = parsed.data;
 
   const evento = await db.event.findUnique({ where: { id: eventId }, select: { id: true } });
   if (!evento) {
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
       camera: procesada.camera,
       lens: procesada.lens,
       takenAt: procesada.takenAt,
+      equipo: equipo || null,
     },
     select: { id: true, code: true },
   });

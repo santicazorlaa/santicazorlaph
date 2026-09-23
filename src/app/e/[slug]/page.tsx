@@ -83,6 +83,16 @@ export default async function EventoPage({ params }: Props) {
     select: photoSelect,
   });
 
+  // Si Santi separó las fotos por equipo, la galería suma pestañas para
+  // filtrar. Con uno solo (o ninguno), no aparece nada.
+  const porEquipo = await db.photo.groupBy({
+    by: ["equipo"],
+    where: { eventId: evento.id, equipo: { not: null } },
+    _count: true,
+    orderBy: { equipo: "asc" },
+  });
+  const equipos = porEquipo.map((e) => ({ nombre: e.equipo!, cantidad: e._count }));
+
   return (
     <div className="mx-auto max-w-6xl px-5">
       <script
@@ -123,6 +133,7 @@ export default async function EventoPage({ params }: Props) {
         totalPhotos={evento._count.photos}
         packPriceArs={evento.packPriceArs}
         initialPhotos={photos.map(toPhotoDTO)}
+        equipos={equipos}
       />
     </div>
   );

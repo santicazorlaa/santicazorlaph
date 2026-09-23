@@ -159,6 +159,28 @@ async function usarDeTapa(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+/// Corrige el equipo de una foto ya subida. Es la única forma de arreglar un
+/// error de tipeo en el campo de la tanda: no hay borrado de fotos sueltas en
+/// todo el sitio, así que sin esto un nombre mal escrito quedaría pegado para
+/// siempre.
+async function asignarEquipo(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const photoId = String(formData.get("photoId") ?? "");
+  const equipo = String(formData.get("equipo") ?? "").trim();
+  if (!photoId) return;
+
+  const foto = await db.photo.update({
+    where: { id: photoId },
+    data: { equipo: equipo || null },
+    select: { eventId: true },
+  });
+
+  revalidatePath(`/admin/evento/${foto.eventId}`);
+  revalidatePath("/e");
+}
+
 export default async function AdminEventoPage({ params }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
   const { id } = await params;
@@ -170,13 +192,24 @@ export default async function AdminEventoPage({ params }: Props) {
       photos: {
         orderBy: { createdAt: "desc" },
         take: 60,
-        select: { id: true, code: true, thumbKey: true },
+        select: { id: true, code: true, thumbKey: true, equipo: true },
       },
     },
   });
   if (!evento) notFound();
 
   const escalones = await leerEscalones();
+
+  // Los nombres de equipo que ya tiene este partido, para sugerirlos al subir
+  // una tanda nueva y para elegir entre ellos al corregir una foto.
+  const equiposDelPartido = (
+    await db.photo.findMany({
+      where: { eventId: id, equipo: { not: null } },
+      distinct: ["equipo"],
+      select: { equipo: true },
+      orderBy: { equipo: "asc" },
+    })
+  ).map((p) => p.equipo!);
 
   async function alternarPublicado() {
     "use server";
@@ -312,6 +345,15 @@ export default async function AdminEventoPage({ params }: Props) {
         </div>
       </section>
 
+      {/* La usan tanto el campo de equipo del subidor como el selector de
+          reasignación de abajo, para sugerir los nombres que ya existen en
+          este partido en vez de que cada uno se tipee de cero. */}
+      <datalist id="equipos-partido">
+        {equiposDelPartido.map((e) => (
+          <option key={e} value={e} />
+        ))}
+      </datalist>
+
       <Uploader eventId={evento.id} />
 
       {evento.photos.length > 0 && (
@@ -370,6 +412,39 @@ export default async function AdminEventoPage({ params }: Props) {
                         </BotonEnvio>
                       </form>
                     </div>
+                    {/* Sin texto libre a propósito: es para corregir a uno de
+                        los equipos que ya existen en el partido, no para
+                        inventar uno nuevo con otro tipeo distinto —eso pasa
+                        por el campo de la tanda, arriba. */}
+                    <form action={asignarEquipo} className="mt-1 flex items-center gap-1">
+                      <input type="hidden" name="photoId" value={photo.id} />
+                      {/* `key` con el valor guardado: sin esto, al guardar y
+                          revalidar la página React reutiliza el mismo
+                          `<select>` y no vuelve a aplicar el `defaultValue`
+                          nuevo, así que el cambio se guarda pero no se ve
+                          hasta recargar a mano. Con la `key`, React lo
+                          desmonta y lo vuelve a montar con el valor real. */}
+                      <select
+                        key={photo.equipo ?? ""}
+                        name="equipo"
+                        defaultValue={photo.equipo ?? ""}
+                        className="text-[0.6rem] bg-transparent border border-line rounded px-1 py-0.5 text-muted max-w-20"
+                      >
+                        <option value="">Sin equipo</option>
+                        {equiposDelPartido.map((e) => (
+                          <option key={e} value={e}>
+                            {e}
+                          </option>
+                        ))}
+                      </select>
+                      <BotonEnvio
+                        enviando="…"
+                        variante="discreto"
+                        className="text-[0.6rem] text-muted hover:text-accent"
+                      >
+                        Guardar
+                      </BotonEnvio>
+                    </form>
                   </div>
                 </li>
               );
