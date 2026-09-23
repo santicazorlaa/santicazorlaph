@@ -8,12 +8,13 @@ import { SenalDeLink } from "./senal-link";
 import { plural, precio } from "@/lib/format";
 import { EmpujeDescuento } from "./empuje-descuento";
 
-export function CartView() {
+export function CartView({ transferenciaDisponible = false }: { transferenciaDisponible?: boolean }) {
   const cart = useCart();
 
 
   const [email, setEmail] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [metodoPago, setMetodoPago] = useState<"mercadopago" | "transferencia">("mercadopago");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -46,6 +47,7 @@ export function CartView() {
           email,
           instagram: instagram.trim() || undefined,
           photoIds: cart.items.map((i) => i.photoId),
+          metodoPago,
         }),
       });
       const data = await res.json();
@@ -171,6 +173,34 @@ export function CartView() {
         </div>
 
         <form onSubmit={pagar} className="space-y-3">
+          {transferenciaDisponible && (
+            <div className="pb-2">
+              <span className="etiqueta text-muted block mb-2">Cómo pagás</span>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { id: "mercadopago", etiqueta: "MercadoPago" },
+                    { id: "transferencia", etiqueta: "Transferencia" },
+                  ] as const
+                ).map((opcion) => (
+                  <button
+                    key={opcion.id}
+                    type="button"
+                    onClick={() => setMetodoPago(opcion.id)}
+                    aria-pressed={metodoPago === opcion.id}
+                    className={`etiqueta text-xs rounded-md px-3 py-2.5 border transition-colors ${
+                      metodoPago === opcion.id
+                        ? "bg-accent-solid text-accent-ink border-accent-solid"
+                        : "border-line text-muted con-mouse:hover:border-accent con-mouse:hover:text-fg"
+                    }`}
+                  >
+                    {opcion.etiqueta}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <label htmlFor="email" className="etiqueta text-muted block">
             Tu email
           </label>
@@ -219,29 +249,45 @@ export function CartView() {
             aria-busy={enviando}
             className="w-full bg-accent-solid text-accent-ink etiqueta rounded-md py-3.5 con-mouse:hover:opacity-90 active:scale-[0.98] transition-[opacity,transform] duration-150 ease-out disabled:opacity-50 disabled:cursor-progress inline-flex items-center justify-center"
           >
-            {enviando ? "Abriendo el pago" : "Pagar con MercadoPago"}
+            {enviando
+              ? metodoPago === "transferencia"
+                ? "Creando el pedido"
+                : "Abriendo el pago"
+              : metodoPago === "transferencia"
+                ? "Continuar con transferencia"
+                : "Pagar con MercadoPago"}
             {enviando && <span aria-hidden className="senal-link senal-link-activa" />}
           </button>
         </form>
 
-        <ul className="mt-5 space-y-2 text-xs text-muted">
-          <li>Tarjeta, débito, Rapipago, Pago Fácil o dinero en cuenta.</li>
-          <li>Descarga inmediata apenas se acredita.</li>
-          <li>Resolución completa, sin marca de agua.</li>
-        </ul>
+        {metodoPago === "transferencia" ? (
+          <ul className="mt-5 space-y-2 text-xs text-muted">
+            <li>Te mostramos el alias y el CBU en el siguiente paso.</li>
+            <li>Descarga apenas Santi confirma que te acreditó la transferencia.</li>
+            <li>Resolución completa, sin marca de agua.</li>
+          </ul>
+        ) : (
+          <>
+            <ul className="mt-5 space-y-2 text-xs text-muted">
+              <li>Tarjeta, débito, Rapipago, Pago Fácil o dinero en cuenta.</li>
+              <li>Descarga inmediata apenas se acredita.</li>
+              <li>Resolución completa, sin marca de agua.</li>
+            </ul>
 
-        <div className="mt-5 pt-4 border-t border-line flex items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <p className="text-xs font-medium text-ink">Pago 100% seguro</p>
-            <p className="text-[0.65rem] text-muted">Procesado y protegido por Mercado Pago</p>
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/mercadopago-blanco.svg"
-            alt="Mercado Pago"
-            className="h-6 w-auto opacity-85 shrink-0"
-          />
-        </div>
+            <div className="mt-5 pt-4 border-t border-line flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-medium text-ink">Pago 100% seguro</p>
+                <p className="text-[0.65rem] text-muted">Procesado y protegido por Mercado Pago</p>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/mercadopago-blanco.svg"
+                alt="Mercado Pago"
+                className="h-6 w-auto opacity-85 shrink-0"
+              />
+            </div>
+          </>
+        )}
       </aside>
     </div>
   );

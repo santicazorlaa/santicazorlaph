@@ -82,8 +82,16 @@ model Order {
   status   String @default("PENDING")
   totalArs Int
 
+  /// "mercadopago" | "transferencia"
+  metodoPago String @default("mercadopago")
+
   mpPreferenceId String?
   mpPaymentId    String?
+
+  /// Cuándo el comprador tocó "Ya transferí" y se lo mandamos a avisar por
+  /// WhatsApp. Sirve para que el panel muestre quién ya avisó y para no
+  /// borrar sola una orden que alguien dice haber pagado.
+  avisoTransferenciaEn DateTime?
 
   createdAt DateTime  @default(now())
   paidAt    DateTime?

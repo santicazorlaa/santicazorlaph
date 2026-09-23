@@ -39,6 +39,11 @@ export const CLAVES = [
   "contacto.linkedin",
   "contacto.email",
   "notificaciones.email",
+  "transferencia.banco",
+  "transferencia.titular",
+  "transferencia.cuitDni",
+  "transferencia.alias",
+  "transferencia.cbu",
   "legal.terminos",
   "legal.privacidad",
   "seo.titulo",
@@ -87,6 +92,11 @@ const DEFECTOS: Record<Clave, string> = {
   "contacto.linkedin": "",
   "contacto.email": "",
   "notificaciones.email": "",
+  "transferencia.banco": "",
+  "transferencia.titular": "",
+  "transferencia.cuitDni": "",
+  "transferencia.alias": "",
+  "transferencia.cbu": "",
   "legal.terminos": "",
   "legal.privacidad": "",
   // Lo que muestra Google en el resultado de la portada. Traen texto de
@@ -191,4 +201,18 @@ export function linkLinkedin(valor: string) {
   if (!v) return null;
   if (/^https?:\/\//i.test(v)) return v;
   return `https://www.linkedin.com/in/${v.replace(/^@/, "")}`;
+}
+
+/**
+ * Si Santi ya cargó lo mínimo para que alguien le transfiera: a quién (titular),
+ * a dónde (alias o CBU) y un WhatsApp para avisarle. Sin un interruptor
+ * aparte: cargar estos datos es lo que prende la opción, misma regla que el
+ * resto del sitio — lo que está vacío no se muestra.
+ */
+export function transferenciaDisponible(c: Contenido) {
+  return Boolean(
+    c["transferencia.titular"] &&
+      (c["transferencia.alias"] || c["transferencia.cbu"]) &&
+      c["contacto.whatsapp"],
+  );
 }

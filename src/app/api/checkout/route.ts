@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { ipDe, superaLimite } from "@/lib/limite";
-import { createOrder, OrderError } from "@/lib/orders";
+import { createOrder, MetodoPago, OrderError } from "@/lib/orders";
 
 const schema = z.object({
   email: z.string().max(200).email("Necesitamos un email válido para mandarte las fotos"),
   // Opcional de verdad: las fotos llegan por mail igual. Sólo sirve para que
   // Santi sepa a quién etiquetar cuando publica.
   instagram: z.string().max(60).optional(),
+  // Si transferencia no está disponible, `createOrder` la rechaza igual: acá
+  // no hay más que un valor por defecto para no obligar a mandarlo siempre.
+  metodoPago: z.enum([MetodoPago.MERCADOPAGO, MetodoPago.TRANSFERENCIA]).default(MetodoPago.MERCADOPAGO),
   // Sólo mandamos los IDs. El precio y el total los calcula el servidor.
   // Con tope: sin él, un solo pedido con cien mil IDs obliga a la base a
   // buscarlos todos. Ningún partido real tiene tantas fotos.
@@ -42,6 +45,7 @@ export async function POST(request: Request) {
       parsed.data.photoIds,
       parsed.data.email,
       parsed.data.instagram,
+      parsed.data.metodoPago,
     );
     return NextResponse.json({ token, checkoutUrl });
   } catch (error) {

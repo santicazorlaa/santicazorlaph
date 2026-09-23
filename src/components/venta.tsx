@@ -27,6 +27,8 @@ export function Venta({
   fecha,
   fechaPago,
   mpPaymentId,
+  metodoPago = "mercadopago",
+  avisoTransferencia,
   cantidad,
   total,
   pagada,
@@ -41,12 +43,18 @@ export function Venta({
   fecha: string;
   fechaPago?: string | null;
   mpPaymentId?: string | null;
+  /// "mercadopago" | "transferencia"
+  metodoPago?: string;
+  /// Cuándo el comprador avisó por WhatsApp que ya transfirió, formateado. Null
+  /// si todavía no avisó.
+  avisoTransferencia?: string | null;
   cantidad: string;
   total: string;
   pagada: boolean;
   fotos: FotoComprada[];
   formId: string | null;
 }) {
+  const esTransferencia = metodoPago === "transferencia";
   const [abierta, setAbierta] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
@@ -102,13 +110,18 @@ export function Venta({
         <span className="text-sm text-muted tabular-nums">{fecha}</span>
         <span className="text-sm text-muted tabular-nums w-20 text-right">{cantidad}</span>
         <span className="text-sm tabular-nums w-24 text-right font-medium">{total}</span>
-        <span
+        <div
           className={`etiqueta text-[0.65rem] w-20 text-right ${
             pagada ? "text-good" : "text-muted"
           }`}
         >
           {pagada ? "Pagada" : "Pendiente"}
-        </span>
+          {esTransferencia && (
+            <span className="block text-[0.55rem] text-muted/70 normal-case">
+              Transferencia
+            </span>
+          )}
+        </div>
         <span className="w-28 text-right">
           {formId && (
             <BotonEnvio
@@ -147,7 +160,10 @@ export function Venta({
                   Comprador
                 </span>
                 <p className="text-sm font-medium text-ink">
-                  {buyerName || "No informado por MercadoPago / Pendiente"}
+                  {buyerName ||
+                    (esTransferencia
+                      ? "Sin nombre, pendiente de confirmar"
+                      : "No informado por MercadoPago / Pendiente")}
                 </p>
                 <p className="text-muted text-xs mt-0.5">{email}</p>
                 {instagram ? (
@@ -166,7 +182,7 @@ export function Venta({
 
               <div>
                 <span className="text-muted block text-[0.65rem] uppercase tracking-wider mb-1">
-                  Cobro & Mercado Pago
+                  Cobro
                 </span>
                 <p className="font-medium text-ink text-sm">
                   {total} <span className="text-xs text-muted font-normal">({cantidad})</span>
@@ -174,7 +190,18 @@ export function Venta({
                 <p className="text-muted text-xs mt-0.5">
                   {pagada ? `Acreditado: ${fechaPago || fecha}` : `Iniciado: ${fecha}`}
                 </p>
-                {mpPaymentId ? (
+                <p className="text-muted text-[0.7rem] mt-1">
+                  Método: {esTransferencia ? "Transferencia bancaria" : "Mercado Pago"}
+                </p>
+                {esTransferencia ? (
+                  <p className="text-[0.7rem] mt-1 text-muted/50">
+                    {avisoTransferencia
+                      ? `Avisó por WhatsApp: ${avisoTransferencia}`
+                      : pagada
+                        ? "Confirmado a mano por Santi"
+                        : "Todavía no avisó por WhatsApp"}
+                  </p>
+                ) : mpPaymentId ? (
                   <p className="text-muted font-mono text-[0.7rem] mt-1">
                     ID Pago MP: <span className="text-ink font-semibold">#{mpPaymentId}</span>
                   </p>

@@ -362,6 +362,44 @@ export default async function ContenidoPage({ searchParams }: Props) {
       </Seccion>
 
       <Seccion
+        titulo="Transferencia bancaria"
+        descripcion="Para que alguien te pueda pagar por transferencia en vez de MercadoPago, sin la comisión. Mientras falte el titular, el alias o CBU, o el WhatsApp de arriba, esta opción no aparece en el carrito: no hace falta ningún interruptor aparte."
+      >
+        <form action={guardar} className="grid gap-5">
+          <Campo
+            clave="transferencia.titular"
+            etiqueta="Titular de la cuenta"
+            valor={c["transferencia.titular"]}
+            placeholder="Santiago Nieva Cazorla"
+          />
+          <Campo
+            clave="transferencia.cuitDni"
+            etiqueta="CUIT o DNI del titular"
+            ayuda="Opcional, pero ayuda a que quien transfiere confirme que es la cuenta correcta."
+            valor={c["transferencia.cuitDni"]}
+          />
+          <Campo
+            clave="transferencia.banco"
+            etiqueta="Banco / billetera"
+            ayuda="Opcional. Por ejemplo: Banco Galicia, Mercado Pago, Brubank."
+            valor={c["transferencia.banco"]}
+          />
+          <Campo
+            clave="transferencia.alias"
+            etiqueta="Alias"
+            valor={c["transferencia.alias"]}
+            placeholder="santi.fotos.mp"
+          />
+          <Campo
+            clave="transferencia.cbu"
+            etiqueta="CBU / CVU"
+            valor={c["transferencia.cbu"]}
+          />
+          <Guardar />
+        </form>
+      </Seccion>
+
+      <Seccion
         titulo="Cómo aparecés en Google"
         descripcion="El título y el texto de la portada en los resultados de búsqueda, y en la vista previa cuando alguien comparte el link por WhatsApp. Google tarda días o semanas en tomar un cambio."
       >

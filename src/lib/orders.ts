@@ -3,6 +3,7 @@ import "server-only";
 import { customAlphabet } from "nanoid";
 
 import { leerEscalones } from "./ajustes";
+import { leerContenido, transferenciaDisponible } from "./contenido";
 import { db } from "./db";
 import { calcularConPack, repartirConPack, type ItemConEvento } from "./descuentos";
 import { enviarMailDeCompra, enviarNotificacionDeVenta } from "./email";
@@ -13,6 +14,11 @@ export const OrderStatus = {
   PENDING: "PENDING",
   PAID: "PAID",
   FAILED: "FAILED",
+} as const;
+
+export const MetodoPago = {
+  MERCADOPAGO: "mercadopago",
+  TRANSFERENCIA: "transferencia",
 } as const;
 
 const newToken = customAlphabet("abcdefghijkmnpqrstuvwxyz23456789", 24);
@@ -36,8 +42,24 @@ export class OrderError extends Error {}
 /**
  * Crea la orden y el link de pago. El total sale SIEMPRE del precio guardado en
  * la base, nunca de lo que mande el navegador.
+ *
+ * Con `metodoPago: "transferencia"` no se crea ningún cobro en MercadoPago —
+ * es justo el punto de ofrecerla, ahorrarse su comisión — y se devuelve
+ * directamente la ruta interna de la compra en vez de un link de MercadoPago.
+ * Igual que el total, si transferencia está disponible se decide acá, en el
+ * servidor, nunca confiando en lo que mande el navegador.
  */
-export async function createOrder(photoIds: string[], email: string, instagram?: string) {
+export async function createOrder(
+  photoIds: string[],
+  email: string,
+  instagram?: string,
+  metodoPago: (typeof MetodoPago)[keyof typeof MetodoPago] = MetodoPago.MERCADOPAGO,
+) {
+  if (metodoPago === MetodoPago.TRANSFERENCIA) {
+    const disponible = transferenciaDisponible(await leerContenido());
+    if (!disponible) throw new OrderError("La transferencia no está disponible en este momento");
+  }
+
   const unique = [...new Set(photoIds)];
   if (unique.length === 0) throw new OrderError("El carrito está vacío");
   if (unique.length > 200) throw new OrderError("Demasiadas fotos en una sola compra");
@@ -92,11 +114,16 @@ export async function createOrder(photoIds: string[], email: string, instagram?:
       instagram: instagram?.trim().replace(/^@+/, "").toLowerCase() || null,
       totalArs,
       status: OrderStatus.PENDING,
+      metodoPago,
       items: {
         create: photos.map((p, i) => ({ photoId: p.id, priceArs: precios[i] })),
       },
     },
   });
+
+  if (metodoPago === MetodoPago.TRANSFERENCIA) {
+    return { token: order.token, checkoutUrl: `/compra/${order.token}` };
+  }
 
   // La orden ya existe, así que si MercadoPago no nos da el link hay que
   // borrarla: si no, queda una orden PENDING que nadie va a pagar nunca.
@@ -212,17 +239,28 @@ export async function confirmPayment(
     rawCardholder?.name?.trim() ||
     null;
 
-  // El estado va en el `where`: si dos avisos de MercadoPago llegan al mismo
-  // tiempo, sólo uno hace la transición. Eso es lo que garantiza que el mail
-  // salga una sola vez.
+  const reciénPagada = await marcarPagada(order.id, {
+    mpPaymentId: String(payment.id),
+    ...(buyerName ? { buyerName } : {}),
+  }, opts);
+
+  return { ok: true, alreadyPaid: !reciénPagada };
+}
+
+/**
+ * Transición atómica PENDING → PAID, compartida por `confirmPayment` (la
+ * única vía para MercadoPago) y `confirmarPagoTransferencia`. El estado va en
+ * el `where`: si dos avisos llegan al mismo tiempo, sólo uno hace la
+ * transición, que es lo que garantiza que el mail salga una sola vez.
+ */
+async function marcarPagada(
+  orderId: string,
+  extra: Record<string, unknown>,
+  opts: { diferir?: (tarea: () => Promise<void>) => void } = {},
+) {
   const transicion = await db.order.updateMany({
-    where: { id: order.id, status: OrderStatus.PENDING },
-    data: {
-      status: OrderStatus.PAID,
-      paidAt: new Date(),
-      mpPaymentId: String(payment.id),
-      ...(buyerName ? { buyerName } : {}),
-    },
+    where: { id: orderId, status: OrderStatus.PENDING },
+    data: { status: OrderStatus.PAID, paidAt: new Date(), ...extra },
   });
 
   const reciénPagada = transicion.count === 1;
@@ -230,13 +268,32 @@ export async function confirmPayment(
     // Nunca lanza: si el mail falla, la compra igual quedó acreditada.
     const mandarMail = async () => {
       await Promise.allSettled([
-        enviarMailDeCompra(order.id),
-        enviarNotificacionDeVenta(order.id),
+        enviarMailDeCompra(orderId),
+        enviarNotificacionDeVenta(orderId),
       ]);
     };
     if (opts.diferir) opts.diferir(mandarMail);
     else await mandarMail();
   }
 
+  return reciénPagada;
+}
+
+/**
+ * Única vía por la que una orden de transferencia pasa a PAID: Santi la toca
+ * a mano en el panel después de ver la plata en su cuenta. El guard de
+ * `metodoPago` es la pieza que importa acá — es lo único que impide que este
+ * botón se convierta en una forma de marcar cualquier orden como pagada sin
+ * pasar por MercadoPago.
+ */
+export async function confirmarPagoTransferencia(orderId: string) {
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order) return { ok: false, reason: "orden inexistente" };
+  if (order.metodoPago !== MetodoPago.TRANSFERENCIA) {
+    return { ok: false, reason: "no es una orden de transferencia" };
+  }
+  if (order.status === OrderStatus.PAID) return { ok: true, alreadyPaid: true };
+
+  const reciénPagada = await marcarPagada(order.id, {});
   return { ok: true, alreadyPaid: !reciénPagada };
 }

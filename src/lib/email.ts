@@ -255,10 +255,12 @@ export async function enviarNotificacionDeVenta(orderId: string) {
   }
 
   const eventos = [...new Set(order.items.map((i) => i.photo.event.title))];
-  const nombre = order.buyerName?.trim() || "No informado por MercadoPago";
+  const esTransferencia = order.metodoPago === "transferencia";
+  const nombre = order.buyerName?.trim() || (esTransferencia ? "No informado" : "No informado por MercadoPago");
   const ig = order.instagram ? `@${order.instagram}` : "No dejó Instagram";
   const cantFotos = order.items.length;
   const total = precio(order.totalArs);
+  const metodo = esTransferencia ? "Transferencia bancaria" : "Mercado Pago";
   const panelVentasUrl = `${siteUrl}/admin/ventas`;
 
   const html = `<!doctype html>
@@ -278,6 +280,7 @@ export async function enviarNotificacionDeVenta(orderId: string) {
             <tr><td style="color:${GRIS};">Email:</td><td>${escapar(order.email)}</td></tr>
             <tr><td style="color:${GRIS};">Instagram:</td><td>${escapar(ig)}</td></tr>
             <tr><td style="color:${GRIS};">Fotos:</td><td>${cantFotos} ${cantFotos === 1 ? "foto" : "fotos"} (${escapar(eventos.join(" · "))})</td></tr>
+            <tr><td style="color:${GRIS};">Método:</td><td>${escapar(metodo)}</td></tr>
             <tr><td style="color:${GRIS};">Total cobrado:</td><td><strong style="color:${AMBAR};">${escapar(total)}</strong></td></tr>
           </table>
           <a href="${escapar(panelVentasUrl)}"
@@ -298,6 +301,7 @@ export async function enviarNotificacionDeVenta(orderId: string) {
     `Email: ${order.email}`,
     `Instagram: ${ig}`,
     `Fotos: ${cantFotos} (${eventos.join(" · ")})`,
+    `Método: ${metodo}`,
     `Total cobrado: ${total}`,
     "",
     `Ver en el panel: ${panelVentasUrl}`,

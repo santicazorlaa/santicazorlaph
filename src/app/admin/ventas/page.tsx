@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { enviarMailDeCompra } from "@/lib/email";
 import { fechaBreve, horaDe, plural, precio } from "@/lib/format";
-import { OrderStatus } from "@/lib/orders";
+import { confirmarPagoTransferencia, MetodoPago, OrderStatus } from "@/lib/orders";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,8 @@ const AVISOS_MAIL: Record<string, string> = {
   "mail-invalido": "Ese mail no parece válido, así que no se guardó ni se mandó nada.",
   "orden-descartada": "Orden pendiente descartada correctamente.",
   "pendientes-limpias": "Se eliminaron las órdenes pendientes abandonadas.",
+  "transferencia-confirmada": "Listo: la orden quedó pagada y le mandamos sus fotos.",
+  "transferencia-error": "No se pudo confirmar esa orden.",
 };
 
 /**
@@ -71,15 +73,43 @@ async function limpiarPendientesAntiguas() {
   "use server";
   if (!(await isAdmin())) redirect("/admin/login");
 
-  // Carritos abandonados hace más de 24 horas:
+  // Carritos abandonados hace más de 24 horas. `avisoTransferenciaEn: null`
+  // deja afuera a una orden de transferencia donde el comprador ya avisó que
+  // pagó: ésa la confirma o descarta Santi a mano, no se borra sola. Para las
+  // de MercadoPago ese campo siempre es null, así que no cambia nada.
   const hace24hs = new Date(Date.now() - 24 * 60 * 60 * 1000);
   await db.order.deleteMany({
-    where: { status: OrderStatus.PENDING, createdAt: { lt: hace24hs } },
+    where: {
+      status: OrderStatus.PENDING,
+      createdAt: { lt: hace24hs },
+      avisoTransferenciaEn: null,
+    },
   });
 
   revalidatePath("/admin/ventas");
   revalidatePath("/admin");
   redirect("/admin/ventas?mail=pendientes-limpias&filtro=pendientes");
+}
+
+/**
+ * Confirma a mano el pago de una orden por transferencia, después de que
+ * Santi vio la plata en su cuenta. `confirmarPagoTransferencia` es la única
+ * función que hace esta transición, y se niega si la orden no es de
+ * transferencia — una de MercadoPago nunca se puede acreditar desde acá.
+ */
+async function confirmarTransferencia(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) redirect("/admin/ventas");
+
+  const resultado = await confirmarPagoTransferencia(orderId);
+  revalidatePath("/admin/ventas");
+  revalidatePath("/admin");
+  redirect(
+    `/admin/ventas?mail=${resultado.ok ? "transferencia-confirmada" : "transferencia-error"}&filtro=pendientes`,
+  );
 }
 
 type Props = { searchParams: Promise<{ mail?: string; filtro?: string }> };
@@ -130,6 +160,8 @@ export default async function VentasPage({ searchParams }: Props) {
         createdAt: true,
         paidAt: true,
         mpPaymentId: true,
+        metodoPago: true,
+        avisoTransferenciaEn: true,
         items: {
           select: {
             priceArs: true,
@@ -214,6 +246,7 @@ export default async function VentasPage({ searchParams }: Props) {
             {ordenes.map((orden) => {
               const puedeReenviar = orden.status === OrderStatus.PAID;
               const esPendiente = orden.status === OrderStatus.PENDING;
+              const esTransferencia = orden.metodoPago === MetodoPago.TRANSFERENCIA;
               const formId = `reenviar-${orden.id}`;
               return (
                 <div key={orden.id} className="contents">
@@ -232,6 +265,12 @@ export default async function VentasPage({ searchParams }: Props) {
                       fecha={`${fechaBreve(orden.createdAt)} ${horaDe(orden.createdAt)}`}
                       fechaPago={orden.paidAt ? `${fechaBreve(orden.paidAt)} ${horaDe(orden.paidAt)}` : null}
                       mpPaymentId={orden.mpPaymentId}
+                      metodoPago={orden.metodoPago}
+                      avisoTransferencia={
+                        orden.avisoTransferenciaEn
+                          ? `${fechaBreve(orden.avisoTransferenciaEn)} ${horaDe(orden.avisoTransferenciaEn)}`
+                          : null
+                      }
                       cantidad={plural(orden.items.length, "foto", "fotos")}
                       total={precio(orden.totalArs)}
                       pagada={puedeReenviar}
@@ -245,7 +284,20 @@ export default async function VentasPage({ searchParams }: Props) {
                       }))}
                     />
                     {esPendiente && (
-                      <div className="absolute right-0 top-3 flex items-center pr-2">
+                      <div className="absolute right-0 top-3 flex items-center gap-3 pr-2">
+                        {esTransferencia && (
+                          <form action={confirmarTransferencia}>
+                            <input type="hidden" name="orderId" value={orden.id} />
+                            <BotonEnvio
+                              enviando="Confirmando…"
+                              variante="discreto"
+                              className="etiqueta text-[0.65rem] text-good hover:opacity-80 transition-opacity px-2 py-0.5 flex items-center gap-1"
+                              aria-label="Confirmar que la transferencia se recibió"
+                            >
+                              Confirmar pago recibido
+                            </BotonEnvio>
+                          </form>
+                        )}
                         <form action={descartarPendiente}>
                           <input type="hidden" name="orderId" value={orden.id} />
                           <BotonEnvio

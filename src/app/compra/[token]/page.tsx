@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AvisoTransferencia } from "@/components/aviso-transferencia";
 import { ClearCartOnPaid } from "@/components/clear-cart";
 import { SenalDeLink } from "@/components/senal-link";
 import { DownloadButton } from "@/components/download-button";
+import { leerContenido, linkWhatsapp } from "@/lib/contenido";
 import { db } from "@/lib/db";
+import { siteUrl } from "@/lib/env";
 import { precio } from "@/lib/format";
-import { OrderStatus, reconcilePendingOrder } from "@/lib/orders";
+import { MetodoPago, OrderStatus, reconcilePendingOrder } from "@/lib/orders";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -27,12 +30,17 @@ export default async function CompraPage({ params }: Props) {
 
   const pendiente = await db.order.findUnique({
     where: { token },
-    select: { id: true, status: true },
+    select: { id: true, status: true, metodoPago: true },
   });
 
   // Si el aviso de MercadoPago se perdió, le preguntamos nosotros antes de
-  // mostrarle al comprador que su pago sigue pendiente.
-  if (pendiente && pendiente.status === OrderStatus.PENDING) {
+  // mostrarle al comprador que su pago sigue pendiente. Una orden por
+  // transferencia no tiene ningún pago de MercadoPago que buscar.
+  if (
+    pendiente &&
+    pendiente.status === OrderStatus.PENDING &&
+    pendiente.metodoPago === MetodoPago.MERCADOPAGO
+  ) {
     await reconcilePendingOrder(pendiente.id).catch(() => null);
   }
 
@@ -57,6 +65,8 @@ export default async function CompraPage({ params }: Props) {
   if (!order) notFound();
 
   const pagada = order.status === OrderStatus.PAID;
+  const esTransferencia = order.metodoPago === MetodoPago.TRANSFERENCIA;
+  const c = !pagada && esTransferencia ? await leerContenido() : null;
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-12">
@@ -74,6 +84,52 @@ export default async function CompraPage({ params }: Props) {
           Descargá cada foto en resolución completa y sin marca de agua. Guardá este link:
           podés volver cuando quieras y las fotos siguen acá.
         </p>
+      ) : esTransferencia && c ? (
+        <div className="space-y-4 max-w-xl">
+          <p className="text-muted">
+            Transferí <span className="text-ink font-medium">{precio(order.totalArs)}</span> a
+            estos datos y avisale a Santi por WhatsApp para que te confirme el pago. Te mandamos
+            este mismo link a <span className="text-ink">{order.email}</span>.
+          </p>
+          <dl className="border border-line rounded-lg p-4 bg-surface max-w-md space-y-2 text-sm">
+            {c["transferencia.banco"] && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Banco</dt>
+                <dd className="text-ink text-right">{c["transferencia.banco"]}</dd>
+              </div>
+            )}
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">Titular</dt>
+              <dd className="text-ink text-right">{c["transferencia.titular"]}</dd>
+            </div>
+            {c["transferencia.cuitDni"] && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">CUIT/DNI</dt>
+                <dd className="text-ink text-right">{c["transferencia.cuitDni"]}</dd>
+              </div>
+            )}
+            {c["transferencia.alias"] && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Alias</dt>
+                <dd className="text-ink font-mono text-right">{c["transferencia.alias"]}</dd>
+              </div>
+            )}
+            {c["transferencia.cbu"] && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">CBU/CVU</dt>
+                <dd className="text-ink font-mono text-right">{c["transferencia.cbu"]}</dd>
+              </div>
+            )}
+          </dl>
+          <AvisoTransferencia
+            token={order.token}
+            whatsappHref={linkWhatsapp(
+              c["contacto.whatsapp"],
+              `Hola Santi, ya transferí ${precio(order.totalArs)} por mis fotos. Mi pedido: ${siteUrl}/compra/${order.token}`,
+            )}
+            yaAviso={Boolean(order.avisoTransferenciaEn)}
+          />
+        </div>
       ) : (
         <div className="space-y-4 max-w-xl">
           <p className="text-muted">
