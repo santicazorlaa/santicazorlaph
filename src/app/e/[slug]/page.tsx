@@ -90,25 +90,36 @@ export default async function EventoPage({ params }: Props) {
     nombre: e.equipo!,
     cantidad: e._count,
     portada: null as string | null,
-    ratio: 1.5,
   }));
 
   // Una foto de muestra por equipo, para que elegir no sea leer dos nombres
-  // sueltos en un cartel: se ve de qué partido es antes de tocar nada. Sólo se
-  // pide con más de uno —con uno solo no hay nada que elegir— y es una
-  // consulta liviana: `distinct` trae una fila por equipo, no todas.
+  // sueltos en un cartel: se ve de qué equipo es antes de tocar nada. Sólo se
+  // pide con más de uno —con uno solo no hay nada que elegir.
   if (equipos.length > 1) {
-    const portadas = await db.photo.findMany({
-      where: { eventId: evento.id, equipo: { in: equipos.map((e) => e.nombre) } },
-      distinct: ["equipo"],
-      orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
-      select: { equipo: true, thumbKey: true, width: true, height: true },
+    // Primero la que Santi haya elegido a mano desde el panel (sin marca de
+    // agua, ver `EquipoPortada`). El equipo que no tenga una elegida cae al
+    // respaldo automático: su primera foto, igual que la portada del partido
+    // cuando nadie la elige.
+    const elegidas = await db.equipoPortada.findMany({
+      where: { eventId: evento.id },
+      select: { equipo: true, coverKey: true },
     });
-    for (const p of portadas) {
+    for (const p of elegidas) {
       const eq = equipos.find((e) => e.nombre === p.equipo);
-      if (eq) {
-        eq.portada = publicUrl(p.thumbKey);
-        eq.ratio = p.height > 0 ? p.width / p.height : 1.5;
+      if (eq) eq.portada = publicUrl(p.coverKey);
+    }
+
+    const faltantes = equipos.filter((e) => !e.portada).map((e) => e.nombre);
+    if (faltantes.length > 0) {
+      const respaldo = await db.photo.findMany({
+        where: { eventId: evento.id, equipo: { in: faltantes } },
+        distinct: ["equipo"],
+        orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
+        select: { equipo: true, thumbKey: true },
+      });
+      for (const p of respaldo) {
+        const eq = equipos.find((e) => e.nombre === p.equipo);
+        if (eq) eq.portada = publicUrl(p.thumbKey);
       }
     }
   }

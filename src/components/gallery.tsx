@@ -63,7 +63,7 @@ function repartir(photos: PhotoDTO[], columnas: number): Ubicada[][] {
   return cols;
 }
 
-type Equipo = { nombre: string; cantidad: number; portada: string | null; ratio: number };
+type Equipo = { nombre: string; cantidad: number; portada: string | null };
 
 type Props = {
   eventSlug: string;

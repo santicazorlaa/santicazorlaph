@@ -30,9 +30,24 @@ model Event {
   coverKey  String?
   createdAt DateTime @default(now())
 
-  photos Photo[]
+  photos         Photo[]
+  equipoPortadas EquipoPortada[]
 
   @@index([published, date])
+}
+
+/// La portada de un equipo, cuando el partido tiene más de uno: la foto que
+/// representa a ese equipo en la tarjeta para elegirlo, antes de entrar a su
+/// grilla. Tabla aparte y no una columna en `Photo` porque el equipo es texto
+/// libre y no una fila propia — no hay a qué otra cosa colgarle la portada.
+model EquipoPortada {
+  id       String @id @default(cuid())
+  eventId  String
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  equipo   String
+  coverKey String
+
+  @@unique([eventId, equipo])
 }
 
 model Photo {

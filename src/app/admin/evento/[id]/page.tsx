@@ -107,6 +107,49 @@ async function usarDePortada(formData: FormData) {
   revalidatePath("/");
 }
 
+/// La portada de un equipo, para la tarjeta del selector que aparece al entrar
+/// a un partido separado. Mismo sistema que `usarDePortada`: sin marca de
+/// agua, mismo tamaño chico que una miniatura. Sólo se puede elegir entre las
+/// fotos de ese equipo —lo dice la foto, no el formulario— así que no hay
+/// forma de ponerle a un equipo la portada del otro.
+async function usarDePortadaEquipo(formData: FormData) {
+  "use server";
+  if (!(await isAdmin())) redirect("/admin/login");
+
+  const photoId = String(formData.get("photoId") ?? "");
+  const foto = await db.photo.findUnique({
+    where: { id: photoId },
+    select: { originalKey: true, eventId: true, equipo: true },
+  });
+  if (!foto || !foto.equipo) return;
+
+  const { eventId, equipo } = foto;
+  const anterior = await db.equipoPortada.findUnique({
+    where: { eventId_equipo: { eventId, equipo } },
+    select: { coverKey: true },
+  });
+
+  const original = await getObject("private", foto.originalKey);
+  const portada = await renderPortada(original);
+
+  // Clave nueva en cada cambio, por el mismo motivo que la portada del
+  // partido: las fotos públicas se publican con caché de un año.
+  const coverKey = `portada/${eventId}/equipo/${photoId}.${Date.now().toString(36)}.jpg`;
+  await putObject("public", coverKey, portada, "image/jpeg");
+
+  await db.equipoPortada.upsert({
+    where: { eventId_equipo: { eventId, equipo } },
+    create: { eventId, equipo, coverKey },
+    update: { coverKey },
+  });
+
+  if (anterior && anterior.coverKey !== coverKey) {
+    await deleteObject("public", anterior.coverKey).catch(() => {});
+  }
+
+  revalidatePath(`/admin/evento/${eventId}`);
+  revalidatePath("/e");
+}
 
 /// Usa esta foto de fondo del encabezado del sitio. Sale del original, así que
 /// queda mejor que subir una imagen ya achicada desde el panel.
@@ -210,6 +253,18 @@ export default async function AdminEventoPage({ params }: Props) {
       orderBy: { equipo: "asc" },
     })
   ).map((p) => p.equipo!);
+
+  // La portada que Santi eligió para cada equipo, si eligió alguna. Sin fila
+  // acá, la galería pública usa de respaldo la primera foto de ese equipo, con
+  // marca de agua —mismo criterio que la portada del partido sin elegir.
+  const portadasPorEquipo = new Map(
+    (
+      await db.equipoPortada.findMany({
+        where: { eventId: id },
+        select: { equipo: true, coverKey: true },
+      })
+    ).map((p) => [p.equipo, p.coverKey]),
+  );
 
   async function alternarPublicado() {
     "use server";
@@ -345,6 +400,46 @@ export default async function AdminEventoPage({ params }: Props) {
         </div>
       </section>
 
+      {/* Sólo si el partido tiene equipos separados: la portada de cada uno,
+          la foto que aparece en su tarjeta al elegir equipo. Se elige igual
+          que la portada del partido, desde los botones de la grilla de abajo,
+          pero sólo entre las fotos de ese equipo. */}
+      {equiposDelPartido.length > 0 && (
+        <section className="border border-line rounded-lg p-5 mb-10">
+          <h2 className="etiqueta text-muted mb-1">Portada por equipo</h2>
+          <p className="text-sm text-muted mb-4 max-w-prose">
+            La foto de cada tarjeta al elegir equipo, antes de entrar a la grilla. Mismo
+            sistema que la portada del partido: <span className="text-ink">sin marca de
+            agua</span> y del mismo tamaño chico. Elegilas abajo, entre las fotos ya
+            marcadas con ese equipo.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            {equiposDelPartido.map((equipo) => {
+              const coverKey = portadasPorEquipo.get(equipo);
+              return (
+                <div key={equipo} className="w-40">
+                  <div className="aspect-[3/2] bg-surface-2 rounded-md overflow-hidden border border-line">
+                    {coverKey ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={publicUrl(coverKey)}
+                        alt={`Portada de ${equipo}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full grid place-items-center text-[0.65rem] text-muted px-3 text-center">
+                        Sin elegir: se usa la primera foto, con marca de agua
+                      </div>
+                    )}
+                  </div>
+                  <p className="etiqueta text-[0.65rem] text-muted mt-1.5 truncate">{equipo}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* La usan tanto el campo de equipo del subidor como el selector de
           reasignación de abajo, para sugerir los nombres que ya existen en
           este partido en vez de que cada uno se tipee de cero. */}
@@ -369,6 +464,11 @@ export default async function AdminEventoPage({ params }: Props) {
           <ul className="grid gap-3 grid-cols-3 sm:grid-cols-5 lg:grid-cols-6">
             {evento.photos.map((photo) => {
               const esPortada = evento.coverKey?.startsWith(`portada/${id}/${photo.id}.`);
+              const esPortadaEquipo =
+                photo.equipo &&
+                portadasPorEquipo
+                  .get(photo.equipo)
+                  ?.startsWith(`portada/${id}/equipo/${photo.id}.`);
               return (
                 <li key={photo.id}>
                   <div
@@ -401,6 +501,23 @@ export default async function AdminEventoPage({ params }: Props) {
                           </BotonEnvio>
                         </form>
                       )}
+                      {photo.equipo &&
+                        (esPortadaEquipo ? (
+                          <span className="etiqueta text-[0.6rem] text-accent">
+                            Portada {photo.equipo}
+                          </span>
+                        ) : (
+                          <form action={usarDePortadaEquipo}>
+                            <input type="hidden" name="photoId" value={photo.id} />
+                            <BotonEnvio
+                              enviando="Poniendo…"
+                              variante="discreto"
+                              className="text-[0.6rem] text-muted hover:text-accent"
+                            >
+                              Portada {photo.equipo}
+                            </BotonEnvio>
+                          </form>
+                        ))}
                       <form action={usarDeTapa}>
                         <input type="hidden" name="photoId" value={photo.id} />
                         <BotonEnvio

@@ -41,6 +41,7 @@ async function borrarPartido(formData: FormData) {
           _count: { select: { orderItems: true } },
         },
       },
+      equipoPortadas: { select: { coverKey: true } },
     },
   });
   if (!evento) redirect("/admin/partidos?borrado=inexistente");
@@ -51,6 +52,8 @@ async function borrarPartido(formData: FormData) {
   // Primero la base, que es la decisión, y después los archivos. Al revés, si
   // la base fallara, quedaría un partido con las fotos rotas. En este orden lo
   // peor que puede pasar es que sobren archivos en el bucket, que no molestan.
+  // `EquipoPortada` se borra sola en cascada junto con el evento; sus archivos,
+  // igual que los del resto, se limpian después.
   await db.event.delete({ where: { id } });
 
   for (const foto of evento.photos) {
@@ -60,6 +63,9 @@ async function borrarPartido(formData: FormData) {
   }
   if (evento.coverKey?.startsWith("portada/")) {
     await deleteObject("public", evento.coverKey).catch(() => {});
+  }
+  for (const equipoPortada of evento.equipoPortadas) {
+    await deleteObject("public", equipoPortada.coverKey).catch(() => {});
   }
 
   revalidatePath("/admin", "layout");
