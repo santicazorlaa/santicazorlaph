@@ -178,6 +178,33 @@ export async function reconcilePendingOrder(orderId: string) {
 }
 
 /**
+ * El pago de MercadoPago no trae el nombre en un único lugar: según el medio
+ * de pago aparece en `payer`, en `additional_info.payer` o en el titular de
+ * la tarjeta — que además viene anidado en `card.cardholder.name`, no en
+ * `cardholder.name` como parecía razonable a primera vista. Con dinero en
+ * cuenta de MercadoPago (`payment_method_id: "account_money"`) no hay
+ * tarjeta ni nombre en ningún lado: es un límite de la API, no algo que se
+ * pueda completar. La usan `confirmPayment` (al acreditar) y el script que
+ * completa el nombre de las ventas que quedaron sin él.
+ */
+export function extraerNombreComprador(payment: {
+  payer?: { first_name?: string; last_name?: string };
+  card?: { cardholder?: { name?: string } };
+  additional_info?: { payer?: { first_name?: string; last_name?: string } };
+}) {
+  const rawPayer = payment.payer;
+  const rawCardholder = payment.card?.cardholder;
+  const rawAdditionalPayer = payment.additional_info?.payer;
+
+  return (
+    [rawPayer?.first_name, rawPayer?.last_name].filter(Boolean).join(" ").trim() ||
+    [rawAdditionalPayer?.first_name, rawAdditionalPayer?.last_name].filter(Boolean).join(" ").trim() ||
+    rawCardholder?.name?.trim() ||
+    null
+  );
+}
+
+/**
  * Única vía por la que una orden pasa a PAID. Le preguntamos a MercadoPago por
  * el pago; no confiamos en lo que diga quien llamó al webhook.
  */
@@ -227,17 +254,7 @@ export async function confirmPayment(
     return { ok: false, reason: `pago ${payment.status}` };
   }
 
-  const rawPayer = payment.payer as { first_name?: string; last_name?: string } | undefined;
-  const rawCardholder = (payment as { cardholder?: { name?: string } }).cardholder;
-  const rawAdditionalPayer = (
-    payment as { additional_info?: { payer?: { first_name?: string; last_name?: string } } }
-  ).additional_info?.payer;
-
-  const buyerName =
-    [rawPayer?.first_name, rawPayer?.last_name].filter(Boolean).join(" ").trim() ||
-    [rawAdditionalPayer?.first_name, rawAdditionalPayer?.last_name].filter(Boolean).join(" ").trim() ||
-    rawCardholder?.name?.trim() ||
-    null;
+  const buyerName = extraerNombreComprador(payment);
 
   const reciénPagada = await marcarPagada(order.id, {
     mpPaymentId: String(payment.id),
