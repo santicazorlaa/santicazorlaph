@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 
 import { Muestra, type DatosMuestra } from "./muestra";
+import { MuestraDescuento } from "./muestra-descuento";
 import { variantes } from "./variantes";
 import { db } from "@/lib/db";
+import { leerEscalones } from "@/lib/ajustes";
 import { publicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +43,8 @@ export default async function EstiloPage() {
       </div>
     );
   }
+
+  const escalones = await leerEscalones();
 
   const datos: DatosMuestra = {
     titulo: evento.title,
@@ -96,6 +100,21 @@ export default async function EstiloPage() {
             </div>
           </section>
         ))}
+      </div>
+
+      <div className="mt-16 pt-12 border-t border-line">
+        <header className="max-w-2xl">
+          <h2 className="titulo text-3xl text-balance">Aviso de descuento por cantidad</h2>
+          <p className="mt-4 text-muted">
+            Hoy, apenas se entra a un partido, aparece una caja con borde y una grilla de
+            precios antes de elegir ninguna foto. Estas variantes bajan ese peso visual sin
+            esconder la información, con el estilo que ya está publicado en el sitio.
+          </p>
+        </header>
+
+        <div className="mt-5 rounded-xl overflow-hidden border border-line">
+          <MuestraDescuento priceArs={datos.precioArs} escalones={escalones} />
+        </div>
       </div>
     </div>
   );

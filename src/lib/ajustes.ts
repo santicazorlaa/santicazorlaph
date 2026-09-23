@@ -16,6 +16,10 @@ export const OPACIDAD_CENTRO = "marca.opacidad.centro";
 export const CALIDAD_PREVIEW = "foto.calidad.preview";
 /// Los escalones del descuento por cantidad, como "3:14,5:20,10:31,15:37".
 export const ESCALONES_DESCUENTO = "descuento.escalones";
+/// Si la tarjeta de un partido, en el inicio, muestra el precio por foto.
+/// Sin fila guardada arranca apagado: el precio se ve recién al entrar al
+/// partido, que es lo que se pidió al sumar esta perilla.
+export const MOSTRAR_PRECIO_INICIO = "inicio.mostrarPrecio";
 
 type Rango = { min: number; max: number; defecto: number };
 
@@ -80,6 +84,11 @@ export async function guardarAjuste(clave: string, valor: string) {
 /// valores por defecto: el sitio nunca se queda sin una tabla válida.
 export async function leerEscalones(): Promise<Escalon[]> {
   return leerEscalonesDeTexto((await todos()).get(ESCALONES_DESCUENTO));
+}
+
+export async function leerBooleano(clave: string, porDefecto: boolean): Promise<boolean> {
+  const crudo = (await todos()).get(clave);
+  return crudo === undefined ? porDefecto : crudo === "1";
 }
 
 /// Todo lo que necesita el procesamiento de una foto, de una sola lectura.

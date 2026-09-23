@@ -2,11 +2,13 @@ import { calcular, type Escalon } from "@/lib/descuentos";
 import { precio } from "@/lib/format";
 
 /**
- * La escala de precios, arriba de la galería.
+ * El aviso de descuento por cantidad, arriba de la galería.
  *
- * Muestra el precio POR FOTO de cada escalón, no el porcentaje. "20% menos"
- * obliga a hacer una cuenta antes de saber si conviene; "$2.800 cada una" se
- * entiende sin pensar, y es la cifra que se compara contra la de al lado.
+ * Antes era una caja con borde y una grilla de 5 tarjetas, apenas se entraba
+ * al partido y sin haber elegido ninguna foto todavía: mucho peso visual para
+ * algo que el comprador recién va a necesitar. Ahora es una sola línea, con el
+ * mejor precio como anzuelo; el detalle de cada escalón queda a un clic
+ * (`<details>`), para el que ya está pensando en llevar varias.
  */
 export function PreciosEscalonados({
   priceArs,
@@ -18,50 +20,31 @@ export function PreciosEscalonados({
   if (escalones.length === 0) return null;
 
   const mejor = escalones[escalones.length - 1];
+  const cuentaMejor = calcular(priceArs * mejor.desde, mejor.desde, escalones);
 
   return (
-    <div className="border border-line rounded-lg p-4 sm:p-5">
-      <p className="font-medium">Cuantas más lleves, menos sale cada una</p>
-      <p className="text-sm text-muted mt-1">
-        El descuento se aplica solo al llegar a cada cantidad.
-      </p>
-
-      <ul className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4">
-        <li className="border border-line rounded-md px-3 py-2.5">
-          <span className="etiqueta text-[0.6rem] text-muted block">1 foto</span>
-          <span className="cifra text-sm mt-1 block">{precio(priceArs)}</span>
-          <span className="text-[0.65rem] text-muted">cada una</span>
+    <details className="text-sm text-muted">
+      <summary className="cursor-pointer list-none marker:content-none con-mouse:hover:text-ink transition-colors">
+        Cuantas más lleves, menos sale cada una: hasta{" "}
+        <span className="cifra text-accent">{precio(cuentaMejor.unitario)}</span> llevando{" "}
+        {mejor.desde}+.{" "}
+        <span className="underline underline-offset-2">Ver los precios</span>
+      </summary>
+      <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+        <li>
+          <span className="text-muted">1 foto </span>
+          <span className="cifra">{precio(priceArs)}</span>
         </li>
-
         {escalones.map((e) => {
           const cuenta = calcular(priceArs * e.desde, e.desde, escalones);
-          const esElMejor = e.desde === mejor.desde;
           return (
-            <li
-              key={e.desde}
-              className={`rounded-md px-3 py-2.5 border ${
-                esElMejor ? "border-accent bg-accent/5" : "border-line"
-              }`}
-            >
-              <span className="etiqueta text-[0.6rem] text-muted block">
-                Desde {e.desde}
-              </span>
-              <span
-                className={`cifra text-sm mt-1 block ${esElMejor ? "text-accent" : ""}`}
-              >
-                {precio(cuenta.unitario)}
-              </span>
-              <span className="text-[0.65rem] text-accent">
-                {esElMejor ? `ahorrás ${e.porcentaje}%` : `−${e.porcentaje}%`}
-              </span>
+            <li key={e.desde}>
+              <span className="text-muted">{e.desde}+ </span>
+              <span className="cifra text-accent">{precio(cuenta.unitario)}</span>
             </li>
           );
         })}
       </ul>
-
-      <p className="text-[0.7rem] text-muted mt-3">
-        Se descargan al instante, en resolución completa y sin marca de agua.
-      </p>
-    </div>
+    </details>
   );
 }

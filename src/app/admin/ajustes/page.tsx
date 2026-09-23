@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 
 import { DescuentosPanel } from "@/components/descuentos-panel";
 import { MarcaDeAgua } from "@/components/marca-de-agua";
-import { leerAjustesDeFoto, leerEscalones } from "@/lib/ajustes";
+import { PrecioInicioPanel } from "@/components/precio-inicio-panel";
+import {
+  leerAjustesDeFoto,
+  leerBooleano,
+  leerEscalones,
+  MOSTRAR_PRECIO_INICIO,
+} from "@/lib/ajustes";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/auth";
 import { SLOTS } from "@/lib/marca-slots";
@@ -27,14 +33,23 @@ const AVISOS_DESCUENTOS: Record<string, string> = {
   vacio: "No quedó ningún escalón válido, así que no se guardó nada.",
 };
 
+const AVISOS_PRECIO_INICIO: Record<string, string> = {
+  guardado: "Listo: se aplica desde ahora en el inicio.",
+};
+
 type Props = {
-  searchParams: Promise<{ marca?: string; detalle?: string; descuentos?: string }>;
+  searchParams: Promise<{
+    marca?: string;
+    detalle?: string;
+    descuentos?: string;
+    precio?: string;
+  }>;
 };
 
 export default async function AjustesPage({ searchParams }: Props) {
   if (!(await isAdmin())) redirect("/admin/login");
 
-  const { marca, detalle, descuentos } = await searchParams;
+  const { marca, detalle, descuentos, precio } = await searchParams;
   const aviso =
     marca === "error"
       ? (detalle ?? "No pudimos guardar el archivo")
@@ -44,6 +59,7 @@ export default async function AjustesPage({ searchParams }: Props) {
 
   const ajustesDeFoto = await leerAjustesDeFoto();
   const escalones = await leerEscalones();
+  const mostrarPrecioInicio = await leerBooleano(MOSTRAR_PRECIO_INICIO, false);
 
   // El ejemplo de precios usa un partido real; si todavía no hay ninguno, el
   // valor con el que se crean.
@@ -78,6 +94,11 @@ export default async function AjustesPage({ searchParams }: Props) {
         escalones={escalones}
         precioReferencia={precioReferencia}
         aviso={descuentos ? (AVISOS_DESCUENTOS[descuentos] ?? null) : null}
+      />
+
+      <PrecioInicioPanel
+        mostrar={mostrarPrecioInicio}
+        aviso={precio ? (AVISOS_PRECIO_INICIO[precio] ?? null) : null}
       />
     </div>
   );

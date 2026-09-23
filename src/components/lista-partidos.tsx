@@ -29,7 +29,15 @@ const TODOS = "Todos";
  * sube un torneo de hockey, el botón "Hockey" aparece solo. Con un solo deporte
  * no se muestra ningún botón, porque filtrar entre una opción no es filtrar.
  */
-export function ListaPartidos({ partidos }: { partidos: PartidoEnLista[] }) {
+export function ListaPartidos({
+  partidos,
+  mostrarPrecio,
+}: {
+  partidos: PartidoEnLista[];
+  /// Si se apaga desde el panel, la tarjeta no adelanta el precio: se ve
+  /// recién al entrar al partido.
+  mostrarPrecio: boolean;
+}) {
   const deportes = useMemo(() => {
     const vistos: string[] = [];
     for (const p of partidos) {
@@ -114,11 +122,15 @@ export function ListaPartidos({ partidos }: { partidos: PartidoEnLista[] }) {
                   {evento.fechaTexto}
                   {evento.location ? ` · ${evento.location}` : ""}
                 </p>
-                <p className="mt-3 flex items-baseline justify-between text-sm">
+                <p
+                  className={`mt-3 flex items-baseline text-sm ${
+                    mostrarPrecio ? "justify-between" : ""
+                  }`}
+                >
                   <span className="text-muted tabular-nums">
                     {evento.fotos === 1 ? "1 foto" : `${evento.fotos} fotos`}
                   </span>
-                  <span className="cifra">{evento.precioTexto} c/u</span>
+                  {mostrarPrecio && <span className="cifra">{evento.precioTexto} c/u</span>}
                 </p>
               </div>
             </Link>

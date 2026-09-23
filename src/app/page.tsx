@@ -5,6 +5,7 @@ import { Aparecer } from "@/components/aparecer";
 import { TextoEntrante } from "@/components/texto-entrante";
 import { CintaPortfolio } from "@/components/cinta-portfolio";
 import { ListaPartidos, type PartidoEnLista } from "@/components/lista-partidos";
+import { leerBooleano, MOSTRAR_PRECIO_INICIO } from "@/lib/ajustes";
 import { leerContenido, leerLineas, leerPasos, linkWhatsapp } from "@/lib/contenido";
 import { db } from "@/lib/db";
 import { fechaBreve, hace, plural, precio } from "@/lib/format";
@@ -36,8 +37,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [contenido, eventos, destacadas] = await Promise.all([
+  const [contenido, mostrarPrecio, eventos, destacadas] = await Promise.all([
     leerContenido(),
+    leerBooleano(MOSTRAR_PRECIO_INICIO, false),
     db.event.findMany({
       where: { published: true },
       orderBy: { date: "desc" },
@@ -183,7 +185,7 @@ export default async function Home() {
               Todavía no hay partidos publicados.
             </p>
           ) : (
-            <ListaPartidos partidos={partidos} />
+            <ListaPartidos partidos={partidos} mostrarPrecio={mostrarPrecio} />
           )}
         </section>
 
