@@ -259,38 +259,31 @@ export default async function AdminEventoPage({ params }: Props) {
     ).map((p) => [p.equipo, p.coverKey]),
   );
 
-  const LIMITE_POR_GRUPO = 60;
-
-  // Las fotos para elegir portada y corregir equipo, agrupadas por equipo.
+  // Las fotos para elegir portada y corregir equipo, agrupadas por equipo y
+  // sin límite: antes era una sola lista con las últimas 60 cargadas, sin
+  // importar de qué equipo eran, así que subir la tanda de un equipo después
+  // de la del otro enterraba a la primera tanda fuera de esa lista, sin forma
+  // de verla ni de elegirle portada. Agrupando, cada equipo tiene todas las
+  // suyas y subir una tanda no tapa a la anterior.
   //
-  // Antes era una sola lista con las últimas 60 cargadas, sin importar de qué
-  // equipo eran. Subir la tanda de un equipo después de la del otro llenaba
-  // esa lista entera con la tanda nueva, así que no había forma de ver —ni de
-  // elegirle portada— a las fotos del equipo subido primero. Agrupando, cada
-  // uno tiene su propia ventana de 60 y subir una tanda no tapa a la anterior.
-  //
-  // Sin equipos en el partido, queda un solo grupo (`null`) con el
-  // comportamiento de siempre.
+  // Sin equipos en el partido, queda un solo grupo (`null`) con todas las
+  // fotos del partido.
   const nombresDeGrupo: (string | null)[] =
     equiposDelPartido.length > 0 ? [...equiposDelPartido, null] : [null];
   const gruposFotos = (
     await Promise.all(
       nombresDeGrupo.map(async (equipo) => {
-        const [fotos, total] = await Promise.all([
-          db.photo.findMany({
-            where: { eventId: id, equipo },
-            orderBy: { createdAt: "desc" },
-            take: LIMITE_POR_GRUPO,
-            select: { id: true, code: true, thumbKey: true, equipo: true },
-          }),
-          db.photo.count({ where: { eventId: id, equipo } }),
-        ]);
-        return { equipo, fotos, total };
+        const fotos = await db.photo.findMany({
+          where: { eventId: id, equipo },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, code: true, thumbKey: true, equipo: true },
+        });
+        return { equipo, fotos };
       }),
     )
     // El grupo "sin equipo" sólo interesa si de verdad quedó alguna sin
     // asignar: en un partido separado, lo normal es que no sobre ninguna.
-  ).filter((grupo) => grupo.total > 0);
+  ).filter((grupo) => grupo.fotos.length > 0);
 
   async function alternarPublicado() {
     "use server";
@@ -495,8 +488,7 @@ export default async function AdminEventoPage({ params }: Props) {
               <h3 className="etiqueta text-[0.7rem] text-ink mb-2">
                 {grupo.equipo ?? "Sin equipo"}{" "}
                 <span className="text-muted tabular-nums font-normal normal-case tracking-normal">
-                  · {grupo.total === 1 ? "1 foto" : `${grupo.total} fotos`}
-                  {grupo.total > LIMITE_POR_GRUPO ? `, mostrando las últimas ${LIMITE_POR_GRUPO}` : ""}
+                  · {grupo.fotos.length === 1 ? "1 foto" : `${grupo.fotos.length} fotos`}
                 </span>
               </h3>
             )}
