@@ -103,10 +103,15 @@ export function Gallery({
   // se quede pidiendo al vacío o en silencio.
   const [fallo, setFallo] = useState(false);
   const [finDeLista, setFinDeLista] = useState(false);
-  // Qué equipo se está mostrando. `null` es "Todas". La búsqueda por código
-  // mira todo el partido sin importar el equipo, así que las dos pestañas se
-  // pisan: elegir una limpia la otra, para no mostrar un estado imposible.
-  const [equipoActivo, setEquipoActivo] = useState<string | null>(null);
+  // Qué equipo se está mostrando. Con dos o más, no hay pestaña "Todas": Santi
+  // ya duplica a mano la foto que le sirve a los dos equipos, así que cada foto
+  // vive en al menos un equipo y no hace falta una vista que las junte todas.
+  // Arranca en el primero (orden alfabético, como ya vienen de `equipos`); con
+  // uno solo o ninguno, en `null`, que es "no hay filtro" —tampoco hay
+  // pestañas para elegir otra cosa.
+  const [equipoActivo, setEquipoActivo] = useState<string | null>(
+    equipos.length > 1 ? equipos[0].nombre : null,
+  );
   const [cambiandoEquipo, setCambiandoEquipo] = useState(false);
   const centinela = useRef<HTMLDivElement>(null);
   const inputCodigo = useRef<HTMLInputElement>(null);
@@ -132,10 +137,11 @@ export function Gallery({
     [eventSlug, eventTitle, priceArs, totalPhotos, packPriceArs],
   );
 
-  // El total de "Todas" es el del partido entero; el de un equipo, el que
-  // vino agrupado del servidor. `totalPhotos` en sí no se toca: de ahí sale
-  // `totalFotosEvento` en el carrito, del que depende el pack completo —ese
-  // sigue siendo llevarse todas las fotos del partido, no las de un equipo.
+  // Sin equipo activo (partido sin separar), el total es el del partido
+  // entero; con uno activo, el que vino agrupado del servidor para ese
+  // equipo. `totalPhotos` en sí no se toca: de ahí sale `totalFotosEvento` en
+  // el carrito, del que depende el pack completo —ese sigue siendo llevarse
+  // todas las fotos del partido, no las de un equipo.
   const totalActual = equipoActivo
     ? (equipos.find((e) => e.nombre === equipoActivo)?.cantidad ?? 0)
     : totalPhotos;
@@ -169,17 +175,14 @@ export function Gallery({
     }
   }, [quedanPorCargar, eventSlug, photos.length, equipoActivo]);
 
-  /// Cambia de pestaña de equipo, pidiendo su primera página al servidor.
-  /// Limpia cualquier búsqueda por código activa: son dos filtros que no se
-  /// combinan, y dejar los dos prendidos mostraría un estado imposible.
-  const elegirEquipo = useCallback(
+  /// Pide la primera página de un equipo al servidor y reemplaza la grilla.
+  /// Separada de `elegirEquipo` para poder reusarla también al salir de una
+  /// búsqueda por código, donde hace falta volver a pedir aunque el equipo no
+  /// haya cambiado.
+  const cargarEquipo = useCallback(
     async (nombre: string | null) => {
-      if (nombre === equipoActivo || cambiandoEquipo) return;
       setCambiandoEquipo(true);
       setFallo(false);
-      setFiltrando(false);
-      setCodigo("");
-      setSinResultado(false);
       try {
         const res = await fetch(
           `/api/eventos/${eventSlug}/fotos${nombre ? `?equipo=${encodeURIComponent(nombre)}` : ""}`,
@@ -195,8 +198,35 @@ export function Gallery({
         setCambiandoEquipo(false);
       }
     },
-    [eventSlug, equipoActivo, cambiandoEquipo],
+    [eventSlug],
   );
+
+  /// Cambia de pestaña de equipo. Limpia cualquier búsqueda por código activa:
+  /// son dos filtros que no se combinan, y dejar los dos prendidos mostraría un
+  /// estado imposible.
+  const elegirEquipo = useCallback(
+    (nombre: string | null) => {
+      if (nombre === equipoActivo || cambiandoEquipo) return;
+      setFiltrando(false);
+      setCodigo("");
+      setSinResultado(false);
+      void cargarEquipo(nombre);
+    },
+    [equipoActivo, cambiandoEquipo, cargarEquipo],
+  );
+
+  /// Sale de una búsqueda por código y vuelve a la grilla del equipo que
+  /// estaba activo. Con un solo equipo (o ninguno) no hace falta pedirle nada
+  /// al servidor: `initialPhotos` ya es esa misma foto, guardada en el cliente.
+  const salirDeBusqueda = useCallback(() => {
+    setFiltrando(false);
+    setSinResultado(false);
+    setFinDeLista(false);
+    setFallo(false);
+    setCodigo("");
+    if (equipos.length > 1) void cargarEquipo(equipoActivo);
+    else setPhotos(initialPhotos);
+  }, [equipos.length, equipoActivo, cargarEquipo, initialPhotos]);
 
   /// Abre una foto en el visor y, si está cerca del final, pide la tanda que
   /// sigue. Se pide antes de llegar y no al llegar porque en la última foto el
@@ -246,12 +276,7 @@ export function Gallery({
     e.preventDefault();
     const q = codigo.trim().toUpperCase().replace(/^#/, "");
     if (!q) {
-      setFiltrando(false);
-      setSinResultado(false);
-      setFinDeLista(false);
-      setFallo(false);
-      setEquipoActivo(null);
-      setPhotos(initialPhotos);
+      salirDeBusqueda();
       return;
     }
     setBuscando(true);
@@ -261,10 +286,9 @@ export function Gallery({
         `/api/eventos/${eventSlug}/fotos?codigo=${encodeURIComponent(q)}`,
       );
       const data = (await res.json()) as { photos: PhotoDTO[] };
-      // El código busca en todo el partido, sin importar la pestaña de
-      // equipo: la vuelve a "Todas" para que no quede una marcada mientras se
-      // ve el resultado de una búsqueda que las mira a todas.
-      setEquipoActivo(null);
+      // El código busca en todo el partido, sin importar qué pestaña de
+      // equipo esté activa: no hace falta tocarla, `salirDeBusqueda` sabe
+      // volver a ella cuando se cierre la búsqueda.
       setFiltrando(true);
       setPhotos(data.photos);
       setSinResultado(data.photos.length === 0);
@@ -279,20 +303,23 @@ export function Gallery({
   return (
     <section className="py-8">
       {/* Sólo aparece si Santi separó las fotos en dos o más equipos. Con uno
-          solo (o ninguno), la pestaña no agregaría nada. */}
+          solo (o ninguno), la pestaña no agregaría nada. Sin pestaña "Todas" a
+          propósito: la foto que sirve para los dos equipos se sube duplicada,
+          una vez para cada uno, así que cada foto ya vive en algún equipo y no
+          hace falta una vista que las junte todas. */}
       {equipos.length > 1 && (
         <div
           className={`flex flex-wrap gap-2 mb-4 transition-opacity duration-200 ${
             cambiandoEquipo ? "opacity-60" : "opacity-100"
           }`}
         >
-          {[{ nombre: null, cantidad: totalPhotos }, ...equipos].map((e) => {
+          {equipos.map((e) => {
             const activa = e.nombre === equipoActivo;
             return (
               <button
-                key={e.nombre ?? "todas"}
+                key={e.nombre}
                 type="button"
-                onClick={() => void elegirEquipo(e.nombre)}
+                onClick={() => elegirEquipo(e.nombre)}
                 disabled={cambiandoEquipo}
                 aria-pressed={activa}
                 className={`etiqueta text-xs rounded-full px-4 py-1.5 transition-colors flex items-center gap-1.5 ${
@@ -301,7 +328,7 @@ export function Gallery({
                     : "border border-line text-muted con-mouse:hover:border-accent con-mouse:hover:text-fg"
                 } ${cambiandoEquipo ? "cursor-wait" : ""}`}
               >
-                {e.nombre ?? "Todas"}
+                {e.nombre}
                 <span className="opacity-70 tabular-nums">({e.cantidad})</span>
               </button>
             );
@@ -333,18 +360,10 @@ export function Gallery({
           {filtrando && (
             <button
               type="button"
-              onClick={() => {
-                setFiltrando(false);
-                setCodigo("");
-                setSinResultado(false);
-                setFinDeLista(false);
-                setFallo(false);
-                setEquipoActivo(null);
-                setPhotos(initialPhotos);
-              }}
+              onClick={salirDeBusqueda}
               className="etiqueta text-muted hover:text-ink px-2"
             >
-              Ver todas
+              Cancelar búsqueda
             </button>
           )}
         </form>

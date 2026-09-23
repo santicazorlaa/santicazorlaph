@@ -76,15 +76,10 @@ export default async function EventoPage({ params }: Props) {
 
   const escalones = await leerEscalones();
 
-  const photos = await db.photo.findMany({
-    where: { eventId: evento.id },
-    orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
-    take: PHOTOS_PER_PAGE,
-    select: photoSelect,
-  });
-
   // Si Santi separó las fotos por equipo, la galería suma pestañas para
-  // filtrar. Con uno solo (o ninguno), no aparece nada.
+  // filtrar y arranca en el primero — sin pestaña "Todas": la foto que le
+  // sirve a los dos equipos la sube duplicada, así que cada una ya vive en
+  // algún equipo. Con uno solo (o ninguno), no aparece nada.
   const porEquipo = await db.photo.groupBy({
     by: ["equipo"],
     where: { eventId: evento.id, equipo: { not: null } },
@@ -92,6 +87,14 @@ export default async function EventoPage({ params }: Props) {
     orderBy: { equipo: "asc" },
   });
   const equipos = porEquipo.map((e) => ({ nombre: e.equipo!, cantidad: e._count }));
+  const equipoInicial = equipos.length > 1 ? equipos[0].nombre : null;
+
+  const photos = await db.photo.findMany({
+    where: { eventId: evento.id, ...(equipoInicial ? { equipo: equipoInicial } : {}) },
+    orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
+    take: PHOTOS_PER_PAGE,
+    select: photoSelect,
+  });
 
   return (
     <div className="mx-auto max-w-6xl px-5">
