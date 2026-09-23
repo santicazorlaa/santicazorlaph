@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import exifr from "exifr";
-import opentype from "opentype.js";
+import * as opentype from "opentype.js";
 import sharp from "sharp";
 import type { OverlayOptions, Sharp } from "sharp";
 
