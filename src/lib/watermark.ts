@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import exifr from "exifr";
+import opentype from "opentype.js";
 import sharp from "sharp";
 import type { OverlayOptions, Sharp } from "sharp";
 
@@ -135,6 +136,69 @@ function fade(image: Sharp, opacity: number) {
 
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 
+/// La fuente para el aviso anti-IA, convertida a trazos en vez de "texto".
+/// Sharp dibuja `<text>` pidiéndole una fuente al sistema operativo (vía
+/// fontconfig), y el servidor de producción no tiene ninguna instalada: cada
+/// letra salía como el cuadradito de "no puedo mostrar este carácter". Al
+/// convertir el texto a su contorno vectorial de antemano, lo que se manda a
+/// sharp ya es dibujo puro (un `<path>`), así que se ve igual en cualquier
+/// servidor, tenga o no fuentes instaladas.
+let fontVectorial: Promise<opentype.Font> | null = null;
+
+function cargarFontVectorial(): Promise<opentype.Font> {
+  if (!fontVectorial) {
+    fontVectorial = readFile(path.join(process.cwd(), "assets", "fonts", "Inter.ttf")).then(
+      (buffer) => {
+        const arrayBuffer = buffer.buffer.slice(
+          buffer.byteOffset,
+          buffer.byteOffset + buffer.byteLength,
+        );
+        return opentype.parse(arrayBuffer as ArrayBuffer);
+      },
+    );
+  }
+  return fontVectorial;
+}
+
+/// El contorno de una línea de texto, con el ancho que ocupa. `letterSpacing`
+/// es en las mismas unidades que `fontSize` (píxeles del render final).
+async function lineaVectorial(texto: string, fontSize: number, letterSpacing: number) {
+  const font = await cargarFontVectorial();
+  const scale = fontSize / font.unitsPerEm;
+  let x = 0;
+  const trazos: string[] = [];
+  for (const caracter of texto) {
+    const glyph = font.charToGlyph(caracter);
+    const trazo = glyph.getPath(x, 0, fontSize).toPathData(2);
+    if (trazo) trazos.push(trazo);
+    x += (glyph.advanceWidth ?? 0) * scale + letterSpacing;
+  }
+  return { d: trazos.join(" "), width: Math.max(0, x - letterSpacing) };
+}
+
+/// Varias líneas de texto vectorial, cada una centrada dentro de
+/// `containerWidth` por su cuenta (igual que el `text-anchor="middle"` que
+/// reemplaza), apiladas cada `lineHeight` a partir de `primeraBase`.
+async function bloqueVectorial(
+  lineas: string[],
+  fontSize: number,
+  letterSpacing: number,
+  containerWidth: number,
+  lineHeight: number,
+  primeraBase: number,
+): Promise<string> {
+  const renglones = await Promise.all(
+    lineas.map((linea) => lineaVectorial(linea, fontSize, letterSpacing)),
+  );
+  return renglones
+    .map(({ d, width }, i) => {
+      const dx = Math.round((containerWidth - width) / 2);
+      const dy = primeraBase + i * lineHeight;
+      return `<g transform="translate(${dx},${dy})"><path d="${d}" fill="#ffffff"/></g>`;
+    })
+    .join("");
+}
+
 /// La sombra es lo que hace que la marca se lea tanto sobre un cielo quemado
 /// como sobre la sombra de la tribuna.
 async function buildMark(
@@ -169,17 +233,21 @@ async function buildMark(
         : Math.max(7, Math.round(markWidth * 0.052));
 
     const metaSpacing = Math.round(metaFontSize * 0.65);
-    const letterSpacing = slot === "centro" ? "1.0" : "0.5";
+    const letterSpacing = slot === "centro" ? 1.0 : 0.5;
     const textContent =
       slot === "centro"
         ? "AI PROCESSING PROHIBITED · [METADATA: PROHIBITION_IA = TRUE]"
         : "[METADATA: PROHIBITION_IA = TRUE]";
 
-    const metaSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${markWidth}" height="${metaFontSize + 6}">
-      <text x="50%" y="${metaFontSize}" font-family="Arial, Helvetica, sans-serif"
-            font-size="${metaFontSize}" font-weight="bold" letter-spacing="${letterSpacing}"
-            text-anchor="middle" fill="#ffffff">${textContent}</text>
-    </svg>`;
+    const metaBody = await bloqueVectorial(
+      [textContent],
+      metaFontSize,
+      letterSpacing,
+      markWidth,
+      metaFontSize,
+      metaFontSize,
+    );
+    const metaSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${markWidth}" height="${metaFontSize + 6}">${metaBody}</svg>`;
     const metaBuffer = await sharp(Buffer.from(metaSvg)).png().toBuffer();
     const { height: mh = 0 } = await sharp(metaBuffer).metadata();
 
@@ -292,21 +360,9 @@ async function buildAntiAiMark(imageWidth: number, imageHeight: number, opacity:
 
   const totalHeight = lines.length * lineHeight + Math.round(fontSize * 0.8);
 
-  const tspans = lines
-    .map(
-      (line, i) =>
-        `<tspan x="50%" dy="${i === 0 ? fontSize : lineHeight}">${line
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")}</tspan>`,
-    )
-    .join("");
+  const cuerpo = await bloqueVectorial(lines, fontSize, 0.5, targetWidth, lineHeight, fontSize + 2);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${targetWidth}" height="${totalHeight}">
-    <text x="50%" y="2" font-family="Arial, Helvetica, sans-serif"
-          font-size="${fontSize}" font-weight="bold" letter-spacing="0.5"
-          text-anchor="middle" fill="#ffffff">${tspans}</text>
-  </svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${targetWidth}" height="${totalHeight}">${cuerpo}</svg>`;
 
   const pad = 6;
   const solid = await sharp(Buffer.from(svg)).png().toBuffer();
