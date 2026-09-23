@@ -127,19 +127,19 @@ export default async function DetalleEntregaPage({ params, searchParams }: Props
 
       {resync && (
         <div className="mb-6 p-4 border border-accent/40 bg-accent/10 rounded-md text-sm text-accent flex items-center justify-between">
-          <span>✓ ¡Sincronización exitosa! Se actualizaron {resync} fotos desde Google Drive.</span>
+          <span>Listo: se actualizaron {resync} fotos desde Google Drive.</span>
         </div>
       )}
 
       {guardado && (
         <div className="mb-6 p-4 border border-line bg-surface rounded-md text-sm text-muted">
-          ✓ Los datos de la entrega se guardaron correctamente.
+          Listo: los datos de la entrega se guardaron.
         </div>
       )}
 
       {error && (
         <div className="mb-6 p-4 border border-red-500/30 bg-red-500/10 rounded-md text-sm text-red-200">
-          ⚠️ {decodeURIComponent(error)}
+          {decodeURIComponent(error)}
         </div>
       )}
 
@@ -229,7 +229,7 @@ export default async function DetalleEntregaPage({ params, searchParams }: Props
                 enviando="Sincronizando fotos…"
                 className="w-full text-xs bg-accent text-ground font-medium py-2 rounded hover:bg-accent/90 transition-colors"
               >
-                ↻ Sincronizar con Google Drive
+                Sincronizar con Google Drive
               </BotonEnvio>
             </form>
           </div>
@@ -330,7 +330,7 @@ export default async function DetalleEntregaPage({ params, searchParams }: Props
                   enviando="Sincronizando…"
                   className="text-xs bg-accent text-ground font-medium px-4 py-2 rounded hover:bg-accent/90"
                 >
-                  ↻ Sincronizar ahora
+                  Sincronizar ahora
                 </BotonEnvio>
               </form>
             </div>
@@ -376,7 +376,7 @@ export default async function DetalleEntregaPage({ params, searchParams }: Props
                             className="text-[0.65rem] bg-accent text-ground px-2 py-1 rounded font-medium shadow hover:bg-accent/90"
                             title="Probar descarga en máxima calidad"
                           >
-                            ⬇ Probar descarga
+                            Probar descarga
                           </a>
                         </div>
 

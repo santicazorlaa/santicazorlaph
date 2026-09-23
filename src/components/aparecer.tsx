@@ -43,12 +43,17 @@ export function Aparecer({
     /// con un ancla, o recargar a media página—, donde la sección pasa de
     /// estar abajo a estar arriba sin haber sido visible en ningún momento.
     /// Sin esa segunda condición se quedaba invisible para siempre.
+    ///
+    /// El margen es positivo y no negativo a propósito: se adelanta un 30% de
+    /// la pantalla, así que revela ANTES de que el elemento llegue, no
+    /// después. Con margen negativo (como era antes) una fila recién cargada
+    /// que quedaba apenas debajo del borde inferior se veía invisible —del
+    /// mismo color que el fondo oscuro— y daba la sensación de que la galería
+    /// se cortaba ahí, para quien no llegaba a scrollear.
     const comprobar = () => {
       if (listo) return;
       const caja = elemento.getBoundingClientRect();
-      // El 0.88 es el mismo margen que el observador: que haya entrado un poco
-      // de verdad, no que asome el primer píxel.
-      if (caja.top >= window.innerHeight * 0.88) return;
+      if (caja.top >= window.innerHeight * 1.3) return;
       listo = true;
       setVisible(true);
       observador.disconnect();
@@ -56,7 +61,7 @@ export function Aparecer({
     };
 
     const observador = new IntersectionObserver(comprobar, {
-      rootMargin: "0px 0px -12% 0px",
+      rootMargin: "0px 0px 30% 0px",
     });
     observador.observe(elemento);
 

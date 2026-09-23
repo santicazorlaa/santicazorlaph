@@ -1,6 +1,6 @@
 "use client";
 
-import { horaDe, fechaBreve, precio } from "@/lib/format";
+import { precio } from "@/lib/format";
 import type { PhotoDTO } from "@/lib/photos";
 
 import { CabeceraVisor, VisorDeslizante } from "./visor-deslizante";
@@ -32,12 +32,11 @@ export function Lightbox({
   onIndex,
 }: Props) {
   const photo = photos[index];
-  const tomada = photo.tomadaEn ? new Date(photo.tomadaEn) : null;
 
+  // La fecha de la toma no se muestra: sale del reloj de la cámara, que a
+  // veces queda mal configurado, y una fecha equivocada confunde más de lo
+  // que suma.
   const datos: [string, string][] = [
-    ...(tomada
-      ? ([["Tomada", `${fechaBreve(tomada)} · ${horaDe(tomada)}`]] as [string, string][])
-      : []),
     ["Original", photo.resolucion],
     ...(photo.camara ? ([["Cámara", photo.camara]] as [string, string][]) : []),
     ...(photo.lente ? ([["Lente", photo.lente]] as [string, string][]) : []),

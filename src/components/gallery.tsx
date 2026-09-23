@@ -100,6 +100,7 @@ export function Gallery({
   const [fallo, setFallo] = useState(false);
   const [finDeLista, setFinDeLista] = useState(false);
   const centinela = useRef<HTMLDivElement>(null);
+  const inputCodigo = useRef<HTMLInputElement>(null);
   /// Si hay un pedido en vuelo. Va en una referencia y no en el estado de
   /// `loading` porque el estado tarda un dibujo en actualizarse, y en ese hueco
   /// el final de la grilla y la apertura de una foto pueden pedir los dos la
@@ -178,6 +179,21 @@ export function Gallery({
     return () => observador.disconnect();
   }, [pedirMas]);
 
+  // Safari a veces reabre esta pantalla con el buscador ya enfocado —al volver
+  // con el botón "atrás" restaura el foco tal cual quedó, teclado incluido— y
+  // con la letra chica de este campo eso dispara además el zoom automático de
+  // iOS sobre inputs enfocados. `pageshow` es el único evento que avisa de esa
+  // restauración: un efecto de montaje no alcanza, porque la página no se
+  // remonta, se reanuda tal cual estaba congelada.
+  useEffect(() => {
+    const quitarFoco = () => {
+      if (document.activeElement === inputCodigo.current) inputCodigo.current?.blur();
+    };
+    quitarFoco();
+    window.addEventListener("pageshow", quitarFoco);
+    return () => window.removeEventListener("pageshow", quitarFoco);
+  }, []);
+
   const buscarPorCodigo = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = codigo.trim().toUpperCase().replace(/^#/, "");
@@ -216,11 +232,12 @@ export function Gallery({
           </label>
           <input
             id="codigo"
+            ref={inputCodigo}
             value={codigo}
             onChange={(e) => setCodigo(e.target.value)}
             placeholder="Código de foto"
             maxLength={6}
-            className="bg-surface border border-line rounded-md px-3 py-2 text-sm w-40 uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:text-muted focus:border-accent outline-none"
+            className="bg-surface border border-line rounded-md px-3 py-2 text-base sm:text-sm w-40 uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:text-muted focus:border-accent outline-none"
           />
           <button
             type="submit"

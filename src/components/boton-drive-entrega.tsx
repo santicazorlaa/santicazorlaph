@@ -21,7 +21,7 @@ export function BotonDriveEntrega({ slug, url }: { slug: string; url: string }) 
       onClick={() => avisarActividad(slug, "drive")}
       className="text-xs border border-line bg-surface con-mouse:hover:border-accent text-ink px-3.5 py-2 rounded-md font-medium transition-[color,border-color,transform] duration-150 ease-out active:scale-[0.97] inline-flex items-center gap-1.5 shadow-sm"
     >
-      <span>📂 Abrir lote en Google Drive ↗</span>
+      <span>Abrir lote en Google Drive ↗</span>
     </a>
   );
 }

@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import type { DeliveryPhotoDTO } from "@/lib/deliveries";
-import { fechaBreve, horaDe } from "@/lib/format";
 import { avisarActividad } from "@/lib/actividad-entrega";
 import { descargarFotoBlob } from "@/lib/descargar-blob";
 import { respaldoDriveThumbUrl } from "@/lib/drive-respaldo";
@@ -92,12 +91,12 @@ export function DeliveryLightbox({ slug, photos, index, onClose, onIndex }: Prop
 
   if (!photo) return null;
 
-  const fechaFoto = photo.takenAt ? new Date(photo.takenAt) : null;
-
+  // La fecha de la toma no se muestra: sale del reloj de la cámara, que a
+  // veces queda mal configurado, y una fecha equivocada confunde más de lo
+  // que suma.
   const datos = [
     ...(photo.camera ? [photo.camera] : []),
     ...(photo.lens ? [photo.lens] : []),
-    ...(fechaFoto ? [`${fechaBreve(fechaFoto)} · ${horaDe(fechaFoto)}`] : []),
   ];
 
   return (

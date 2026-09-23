@@ -12,7 +12,6 @@ export type PhotoDTO = {
   resolucion: string;
   camara: string | null;
   lente: string | null;
-  tomadaEn: string | null;
 };
 
 type PhotoRow = {
@@ -38,7 +37,6 @@ export function toPhotoDTO(p: PhotoRow): PhotoDTO {
     resolucion: `${megapixels(p.width, p.height)}MP · ${formatBytes(p.sizeBytes)}`,
     camara: p.camera,
     lente: p.lens,
-    tomadaEn: p.takenAt ? p.takenAt.toISOString() : null,
   };
 }
 

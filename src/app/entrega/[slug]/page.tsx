@@ -78,9 +78,9 @@ export default async function EntregaPage({ params }: Props) {
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4 text-sm text-muted">
           <div className="flex flex-wrap gap-x-6 gap-y-2 tabular-nums">
-            {entrega.location && <span>📍 {entrega.location}</span>}
-            <span>📸 {plural(entrega._count.photos, "foto", "fotos")}</span>
-            <span className="text-ink font-medium">✨ Descargas libres en máxima calidad</span>
+            {entrega.location && <span>{entrega.location}</span>}
+            <span>{plural(entrega._count.photos, "foto", "fotos")}</span>
+            <span className="text-ink font-medium">Descargas libres en máxima calidad</span>
           </div>
 
           <BotonDriveEntrega slug={entrega.slug} url={entrega.driveUrl} />

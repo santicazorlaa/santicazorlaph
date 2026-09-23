@@ -21,7 +21,6 @@ export type DeliveryPhotoDTO = {
   sizeBytes: number;
   camera: string | null;
   lens: string | null;
-  takenAt: string | null;
   thumbUrl: string;
   previewUrl: string;
   downloadUrl: string;
@@ -65,7 +64,6 @@ export function toDeliveryPhotoDTO(p: {
     sizeBytes: p.sizeBytes,
     camera: p.camera,
     lens: p.lens,
-    takenAt: p.takenAt ? p.takenAt.toISOString() : null,
     thumbUrl: driveThumbUrl(p.driveFileId, "thumb"),
     previewUrl: driveThumbUrl(p.driveFileId, "preview"),
     downloadUrl: driveDownloadUrl(p.driveFileId),
