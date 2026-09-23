@@ -230,14 +230,7 @@ export default async function AdminEventoPage({ params }: Props) {
 
   const evento = await db.event.findUnique({
     where: { id },
-    include: {
-      _count: { select: { photos: true } },
-      photos: {
-        orderBy: { createdAt: "desc" },
-        take: 60,
-        select: { id: true, code: true, thumbKey: true, equipo: true },
-      },
-    },
+    include: { _count: { select: { photos: true } } },
   });
   if (!evento) notFound();
 
@@ -265,6 +258,39 @@ export default async function AdminEventoPage({ params }: Props) {
       })
     ).map((p) => [p.equipo, p.coverKey]),
   );
+
+  const LIMITE_POR_GRUPO = 60;
+
+  // Las fotos para elegir portada y corregir equipo, agrupadas por equipo.
+  //
+  // Antes era una sola lista con las últimas 60 cargadas, sin importar de qué
+  // equipo eran. Subir la tanda de un equipo después de la del otro llenaba
+  // esa lista entera con la tanda nueva, así que no había forma de ver —ni de
+  // elegirle portada— a las fotos del equipo subido primero. Agrupando, cada
+  // uno tiene su propia ventana de 60 y subir una tanda no tapa a la anterior.
+  //
+  // Sin equipos en el partido, queda un solo grupo (`null`) con el
+  // comportamiento de siempre.
+  const nombresDeGrupo: (string | null)[] =
+    equiposDelPartido.length > 0 ? [...equiposDelPartido, null] : [null];
+  const gruposFotos = (
+    await Promise.all(
+      nombresDeGrupo.map(async (equipo) => {
+        const [fotos, total] = await Promise.all([
+          db.photo.findMany({
+            where: { eventId: id, equipo },
+            orderBy: { createdAt: "desc" },
+            take: LIMITE_POR_GRUPO,
+            select: { id: true, code: true, thumbKey: true, equipo: true },
+          }),
+          db.photo.count({ where: { eventId: id, equipo } }),
+        ]);
+        return { equipo, fotos, total };
+      }),
+    )
+    // El grupo "sin equipo" sólo interesa si de verdad quedó alguna sin
+    // asignar: en un partido separado, lo normal es que no sobre ninguna.
+  ).filter((grupo) => grupo.total > 0);
 
   async function alternarPublicado() {
     "use server";
@@ -451,18 +477,31 @@ export default async function AdminEventoPage({ params }: Props) {
 
       <Uploader eventId={evento.id} />
 
-      {evento.photos.length > 0 && (
+      {gruposFotos.length > 0 && (
         <section className="mt-12">
-          <h2 className="etiqueta text-muted mb-1">Últimas cargadas</h2>
+          <h2 className="etiqueta text-muted mb-1">Fotos cargadas</h2>
           <p className="text-sm text-muted mb-4 max-w-prose">
             <span className="text-ink">Portada</span> es la foto que representa al
             partido. <span className="text-ink">Portfolio</span> la suma a la
             selección de tus mejores fotos, abajo en la página principal.{" "}
             <span className="text-ink">Tapa</span> la pone de fondo del encabezado del
             sitio, detrás del título. Las tres salen sin marca de agua y en chico.
+            {gruposFotos.length > 1 &&
+              " Agrupadas por equipo, para que subir la tanda de uno no tape las fotos del otro."}
           </p>
+          {gruposFotos.map((grupo) => (
+          <div key={grupo.equipo ?? "sin-equipo"} className="mb-8 last:mb-0">
+            {gruposFotos.length > 1 && (
+              <h3 className="etiqueta text-[0.7rem] text-ink mb-2">
+                {grupo.equipo ?? "Sin equipo"}{" "}
+                <span className="text-muted tabular-nums font-normal normal-case tracking-normal">
+                  · {grupo.total === 1 ? "1 foto" : `${grupo.total} fotos`}
+                  {grupo.total > LIMITE_POR_GRUPO ? `, mostrando las últimas ${LIMITE_POR_GRUPO}` : ""}
+                </span>
+              </h3>
+            )}
           <ul className="grid gap-3 grid-cols-3 sm:grid-cols-5 lg:grid-cols-6">
-            {evento.photos.map((photo) => {
+            {grupo.fotos.map((photo) => {
               const esPortada = evento.coverKey?.startsWith(`portada/${id}/${photo.id}.`);
               const esPortadaEquipo =
                 photo.equipo &&
@@ -567,6 +606,8 @@ export default async function AdminEventoPage({ params }: Props) {
               );
             })}
           </ul>
+          </div>
+          ))}
         </section>
       )}
     </div>
