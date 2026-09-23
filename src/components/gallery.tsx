@@ -63,7 +63,7 @@ function repartir(photos: PhotoDTO[], columnas: number): Ubicada[][] {
   return cols;
 }
 
-type Equipo = { nombre: string; cantidad: number };
+type Equipo = { nombre: string; cantidad: number; portada: string | null; ratio: number };
 
 type Props = {
   eventSlug: string;
@@ -106,13 +106,21 @@ export function Gallery({
   // Qué equipo se está mostrando. Con dos o más, no hay pestaña "Todas": Santi
   // ya duplica a mano la foto que le sirve a los dos equipos, así que cada foto
   // vive en al menos un equipo y no hace falta una vista que las junte todas.
-  // Arranca en el primero (orden alfabético, como ya vienen de `equipos`); con
-  // uno solo o ninguno, en `null`, que es "no hay filtro" —tampoco hay
-  // pestañas para elegir otra cosa.
-  const [equipoActivo, setEquipoActivo] = useState<string | null>(
-    equipos.length > 1 ? equipos[0].nombre : null,
-  );
+  // Arranca en `null` siempre: con uno solo o ninguno es "no hay filtro"; con
+  // dos o más, "todavía no eligió" —lo resuelve el selector de abajo.
+  const [equipoActivo, setEquipoActivo] = useState<string | null>(null);
   const [cambiandoEquipo, setCambiandoEquipo] = useState(false);
+  // Con más de un equipo, antes de mostrar ninguna foto se pregunta de cuál es
+  // hincha: mezcladas, tiene que buscar entre fotos que no le sirven para
+  // encontrar las suyas. Elegido uno, puede seguir cambiando desde las
+  // pestañas sin salir del partido. El servidor ya sabe si hace falta
+  // preguntar —no llega ninguna foto en `initialPhotos` cuando `equipos` tiene
+  // más de uno— así que no hay parpadeo entre "toda la grilla" y el selector.
+  const [mostrandoSelector, setMostrandoSelector] = useState(equipos.length > 1);
+  // Qué botón del selector se apretó, para darle su propia señal de carga en
+  // vez de una genérica: es la única pantalla donde elegir equipo también
+  // decide qué se ve, no sólo qué se filtra.
+  const [equipoEligiendo, setEquipoEligiendo] = useState<string | null>(null);
   const centinela = useRef<HTMLDivElement>(null);
   const inputCodigo = useRef<HTMLInputElement>(null);
   /// Si hay un pedido en vuelo. Va en una referencia y no en el estado de
@@ -192,13 +200,30 @@ export function Gallery({
         setEquipoActivo(nombre);
         setPhotos(data.photos);
         setFinDeLista(false);
+        return true;
       } catch {
         setFallo(true);
+        return false;
       } finally {
         setCambiandoEquipo(false);
       }
     },
     [eventSlug],
+  );
+
+  /// Primera elección de equipo, desde el selector de entrada. A diferencia de
+  /// `elegirEquipo` (las pestañas de después), acá hace falta saber si salió
+  /// bien: sólo entonces se cierra el selector y aparece la grilla. Si falla,
+  /// el selector se queda —con su propio aviso— y cualquier botón vuelve a
+  /// intentar.
+  const elegirEquipoInicial = useCallback(
+    async (nombre: string) => {
+      setEquipoEligiendo(nombre);
+      const ok = await cargarEquipo(nombre);
+      setEquipoEligiendo(null);
+      if (ok) setMostrandoSelector(false);
+    },
+    [cargarEquipo],
   );
 
   /// Cambia de pestaña de equipo. Limpia cualquier búsqueda por código activa:
@@ -244,6 +269,12 @@ export function Gallery({
   // hueco invisible puesto al pie: cuando se acerca a la pantalla, se piden las
   // que siguen. El margen es de casi una pantalla entera, así que llegan antes
   // de que se acaben las que hay y no se ve ningún corte.
+  //
+  // Con más de un equipo, este hueco no existe todavía mientras se muestra el
+  // selector —no hay grilla que completar—, así que el efecto depende también
+  // de `mostrandoSelector`: sin eso, se engancharía a un `centinela.current`
+  // nulo al montar y nunca volvería a intentarlo cuando el hueco aparece de
+  // verdad, al elegir equipo.
   useEffect(() => {
     const el = centinela.current;
     if (!el) return;
@@ -255,7 +286,7 @@ export function Gallery({
     );
     observador.observe(el);
     return () => observador.disconnect();
-  }, [pedirMas]);
+  }, [pedirMas, mostrandoSelector]);
 
   // Safari a veces reabre esta pantalla con el buscador ya enfocado —al volver
   // con el botón "atrás" restaura el foco tal cual quedó, teclado incluido— y
@@ -306,8 +337,9 @@ export function Gallery({
           solo (o ninguno), la pestaña no agregaría nada. Sin pestaña "Todas" a
           propósito: la foto que sirve para los dos equipos se sube duplicada,
           una vez para cada uno, así que cada foto ya vive en algún equipo y no
-          hace falta una vista que las junte todas. */}
-      {equipos.length > 1 && (
+          hace falta una vista que las junte todas. Antes de elegir uno, en
+          cambio, no hay pestañas todavía: elegir es el selector de abajo. */}
+      {equipos.length > 1 && !mostrandoSelector && (
         <div
           className={`flex flex-wrap gap-2 mb-4 transition-opacity duration-200 ${
             cambiandoEquipo ? "opacity-60" : "opacity-100"
@@ -336,6 +368,76 @@ export function Gallery({
         </div>
       )}
 
+      {/* Con dos o más equipos y ninguno elegido todavía, esto reemplaza a la
+          grilla entera: mezclada con fotos de los dos, buscar las propias es
+          buscar entre las que no sirven. Elegido uno, esta pantalla no vuelve
+          a aparecer —para cambiar de equipo después están las pestañas de
+          arriba, que no se van del partido.
+
+          Cada tarjeta lleva una foto de muestra del equipo, en el mismo molde
+          que la lista de partidos (`lista-partidos.tsx`): sin ella, dos
+          nombres sueltos sobre fondo vacío se leen como un formulario a medio
+          terminar y no como parte del sitio. */}
+      {mostrandoSelector && (
+        <div>
+          <p className="titulo text-2xl sm:text-3xl text-balance mb-6">¿De qué equipo sos?</p>
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {equipos.map((e) => {
+              const eligiendoEsta = equipoEligiendo === e.nombre;
+              return (
+                <li key={e.nombre}>
+                  <button
+                    type="button"
+                    onClick={() => void elegirEquipoInicial(e.nombre)}
+                    disabled={cambiandoEquipo}
+                    aria-label={`Ver las fotos de ${e.nombre}`}
+                    className={`group relative block w-full aspect-[16/10] rounded-lg overflow-hidden border border-line transition-colors ${
+                      cambiandoEquipo ? "cursor-wait" : "con-mouse:hover:border-accent"
+                    } ${cambiandoEquipo && !eligiendoEsta ? "opacity-40" : ""}`}
+                  >
+                    {e.portada ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={e.portada}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover con-mouse:group-hover:scale-[1.04] transition-transform duration-500 ease-out"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-surface" />
+                    )}
+                    {/* Mismo degradado que la portada del sitio: sin él, el
+                        nombre blanco se pierde contra una foto clara. */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-ground via-ground/10 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 text-left">
+                      <p className="titulo text-xl sm:text-2xl text-balance">{e.nombre}</p>
+                      <p className="text-sm text-muted tabular-nums mt-0.5">
+                        {e.cantidad === 1 ? "1 foto" : `${e.cantidad} fotos`}
+                      </p>
+                    </div>
+                    {/* El velo de espera, igual al de una tarjeta de partido:
+                        se apaga la foto y aparece el punto, en vez de un
+                        texto que le corre el título al costado. */}
+                    <span
+                      aria-hidden
+                      className={`velo-link ${eligiendoEsta ? "velo-link-activo" : ""}`}
+                    >
+                      <span className="senal-link senal-link-activa !m-0 w-2.5 h-2.5 text-accent" />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {fallo && (
+            <p className="text-sm text-danger mt-4">
+              No se pudo cargar. Probá de nuevo tocando tu equipo.
+            </p>
+          )}
+        </div>
+      )}
+
+      {!mostrandoSelector && (
+      <>
       <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
         <form onSubmit={buscarPorCodigo} className="flex gap-2">
           <label className="sr-only" htmlFor="codigo">
@@ -476,6 +578,8 @@ export function Gallery({
             {loading && <span aria-hidden className="senal-link senal-link-activa" />}
           </button>
         </div>
+      )}
+      </>
       )}
 
       {cart.count > 0 && (

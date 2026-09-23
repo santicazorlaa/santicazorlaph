@@ -76,25 +76,55 @@ export default async function EventoPage({ params }: Props) {
 
   const escalones = await leerEscalones();
 
-  // Si Santi separó las fotos por equipo, la galería suma pestañas para
-  // filtrar y arranca en el primero — sin pestaña "Todas": la foto que le
-  // sirve a los dos equipos la sube duplicada, así que cada una ya vive en
-  // algún equipo. Con uno solo (o ninguno), no aparece nada.
+  // Si Santi separó las fotos por equipo, la galería primero pregunta de cuál
+  // es hincha en vez de mostrar las dos mezcladas — sin pestaña "Todas": la
+  // foto que le sirve a los dos equipos la sube duplicada, así que cada una ya
+  // vive en algún equipo. Con uno solo (o ninguno), no pregunta nada.
   const porEquipo = await db.photo.groupBy({
     by: ["equipo"],
     where: { eventId: evento.id, equipo: { not: null } },
     _count: true,
     orderBy: { equipo: "asc" },
   });
-  const equipos = porEquipo.map((e) => ({ nombre: e.equipo!, cantidad: e._count }));
-  const equipoInicial = equipos.length > 1 ? equipos[0].nombre : null;
+  const equipos = porEquipo.map((e) => ({
+    nombre: e.equipo!,
+    cantidad: e._count,
+    portada: null as string | null,
+    ratio: 1.5,
+  }));
 
-  const photos = await db.photo.findMany({
-    where: { eventId: evento.id, ...(equipoInicial ? { equipo: equipoInicial } : {}) },
-    orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
-    take: PHOTOS_PER_PAGE,
-    select: photoSelect,
-  });
+  // Una foto de muestra por equipo, para que elegir no sea leer dos nombres
+  // sueltos en un cartel: se ve de qué partido es antes de tocar nada. Sólo se
+  // pide con más de uno —con uno solo no hay nada que elegir— y es una
+  // consulta liviana: `distinct` trae una fila por equipo, no todas.
+  if (equipos.length > 1) {
+    const portadas = await db.photo.findMany({
+      where: { eventId: evento.id, equipo: { in: equipos.map((e) => e.nombre) } },
+      distinct: ["equipo"],
+      orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
+      select: { equipo: true, thumbKey: true, width: true, height: true },
+    });
+    for (const p of portadas) {
+      const eq = equipos.find((e) => e.nombre === p.equipo);
+      if (eq) {
+        eq.portada = publicUrl(p.thumbKey);
+        eq.ratio = p.height > 0 ? p.width / p.height : 1.5;
+      }
+    }
+  }
+
+  // Con más de un equipo nadie va a ver esta primera tanda hasta elegir uno
+  // —la galería abre con el selector, no con la grilla—, así que pedirla acá
+  // sería una consulta a la base que nadie mira.
+  const photos =
+    equipos.length > 1
+      ? []
+      : await db.photo.findMany({
+          where: { eventId: evento.id },
+          orderBy: [{ takenAt: "asc" }, { createdAt: "asc" }],
+          take: PHOTOS_PER_PAGE,
+          select: photoSelect,
+        });
 
   return (
     <div className="mx-auto max-w-6xl px-5">
