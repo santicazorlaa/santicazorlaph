@@ -9,6 +9,7 @@ import { entregaAutorizada } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { fecha, plural } from "@/lib/format";
 import { toDeliveryPhotoDTO } from "@/lib/deliveries";
+import { grafoBase } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -16,17 +17,35 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
+/// La portada la elige Santi con el botón "Usar como portada" en el panel de
+/// la entrega. Sale igual sin PIN: es sólo la vista previa del link al
+/// compartirlo (WhatsApp, etc.), no la galería.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entrega = await db.clientDelivery.findUnique({
     where: { slug, published: true },
-    select: { title: true, clientName: true },
+    select: { title: true, clientName: true, coverUrl: true },
   });
 
+  if (!entrega) {
+    return {
+      title: "Entrega de Fotos",
+      robots: { index: false, follow: false },
+      referrer: "no-referrer",
+    };
+  }
+
+  const titulo = `${entrega.title} · ${entrega.clientName}`;
+
   return {
-    title: entrega ? `${entrega.title} · ${entrega.clientName}` : "Entrega de Fotos",
+    title: titulo,
     robots: { index: false, follow: false },
     referrer: "no-referrer",
+    openGraph: {
+      ...grafoBase,
+      title: titulo,
+      ...(entrega.coverUrl ? { images: [{ url: entrega.coverUrl }] } : {}),
+    },
   };
 }
 
