@@ -123,6 +123,13 @@ export default async function AdminPage() {
         />
 
         <Tarjeta
+          href="/admin/ingresos"
+          titulo="Ingresos"
+          dato="Lo que te queda"
+          detalle="Por día, semana o mes, ya descontado MercadoPago. Sólo ventas del sitio."
+        />
+
+        <Tarjeta
           href="/admin/portfolio"
           titulo="Portfolio"
           dato={portfolio === 0 ? "Vacío" : String(portfolio)}

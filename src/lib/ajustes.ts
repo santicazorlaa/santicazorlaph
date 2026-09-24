@@ -20,6 +20,10 @@ export const ESCALONES_DESCUENTO = "descuento.escalones";
 /// Sin fila guardada arranca apagado: el precio se ve recién al entrar al
 /// partido, que es lo que se pidió al sumar esta perilla.
 export const MOSTRAR_PRECIO_INICIO = "inicio.mostrarPrecio";
+/// Porcentaje que MercadoPago descuenta de cada cobro (su cargo más la
+/// retención de Ingresos Brutos). Sirve sólo para mostrar el neto en Ingresos;
+/// lo que se le cobra al comprador no depende de esto.
+export const COMISION_MP = "ingresos.comisionMp";
 
 type Rango = { min: number; max: number; defecto: number };
 
@@ -33,6 +37,7 @@ export const RANGOS: Record<string, Rango> = {
   // qué se está comprando. Por arriba de 90 el archivo pesa de más sin verse
   // mejor.
   [CALIDAD_PREVIEW]: { min: 20, max: 90, defecto: 62 },
+  [COMISION_MP]: { min: 0, max: 40, defecto: 12.61 },
 };
 
 export function acotar(clave: string, n: number) {
